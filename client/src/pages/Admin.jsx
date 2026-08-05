@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ShieldCheck, Lock, UserCog, History, KeyRound, Wallet, Receipt, CalendarDays, CreditCard, Pencil, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { ShieldCheck, Lock, UserCog, History, KeyRound, Wallet, Receipt, CalendarDays, CreditCard, Pencil, ChevronLeft, ChevronRight, Send, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import * as userApi from '../services/users';
 import * as adminApi from '../services/admin';
+import * as pushApi from '../services/push';
 import BottomSheet from '../components/BottomSheet';
 import ConfirmModal from '../components/ConfirmModal';
 import Avatar from '../components/Avatar';
@@ -62,6 +63,12 @@ export default function Admin() {
   const [tgChoresTesting, setTgChoresTesting] = useState(false);
   const [tgBalanceTesting, setTgBalanceTesting] = useState(false);
 
+  const [subscribersCount, setSubscribersCount] = useState(0);
+  const [pushTesting, setPushTesting] = useState(false);
+  const [pushCookingTesting, setPushCookingTesting] = useState(false);
+  const [pushBalanceTesting, setPushBalanceTesting] = useState(false);
+  const [pushContributionTesting, setPushContributionTesting] = useState(false);
+
   const loadLogs = useCallback(async () => {
     if (!isAdmin) return;
     setLogsLoading(true);
@@ -91,12 +98,21 @@ export default function Admin() {
     }
   }, [isAdmin, runWithAuth]);
 
+  const loadPushSubscribers = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const count = await pushApi.getSubscriberCount();
+      setSubscribersCount(count);
+    } catch (_) {}
+  }, [isAdmin]);
+
   useEffect(() => {
     if (isAdmin) {
       loadLogs();
       loadTelegram();
+      loadPushSubscribers();
     }
-  }, [isAdmin, loadLogs, loadTelegram]);
+  }, [isAdmin, loadLogs, loadTelegram, loadPushSubscribers]);
 
   const saveTelegram = async () => {
     setTgSaving(true);
@@ -154,6 +170,62 @@ export default function Admin() {
       if (err.message !== 'Cancelled') toast.show(`Alert failed: ${err.message}`, 'error');
     } finally {
       setTgBalanceTesting(false);
+    }
+  };
+
+  const sendPushTest = async () => {
+    setPushTesting(true);
+    try {
+      await runWithAuth({ title: 'Send Web Push Test', adminOnly: true }, async () => {
+        const res = await pushApi.sendTestPush();
+        toast.show(`🚀 Sent test push to ${res?.sent ?? 0} active subscriber(s)!`);
+      });
+    } catch (err) {
+      if (err.message !== 'Cancelled') toast.show(`Push failed: ${err.message}`, 'error');
+    } finally {
+      setPushTesting(false);
+    }
+  };
+
+  const sendPushCooking = async () => {
+    setPushCookingTesting(true);
+    try {
+      await runWithAuth({ title: "Send Cooking Duty Push", adminOnly: true }, async () => {
+        await pushApi.sendCookingPush();
+        toast.show("🍳 Tomorrow's Cooking Duty push sent!");
+      });
+    } catch (err) {
+      if (err.message !== 'Cancelled') toast.show(`Push failed: ${err.message}`, 'error');
+    } finally {
+      setPushCookingTesting(false);
+    }
+  };
+
+  const sendPushBalance = async () => {
+    setPushBalanceTesting(true);
+    try {
+      await runWithAuth({ title: "Send Balance Push", adminOnly: true }, async () => {
+        await pushApi.sendBalancePush();
+        toast.show("💰 Remaining balance push sent!");
+      });
+    } catch (err) {
+      if (err.message !== 'Cancelled') toast.show(`Push failed: ${err.message}`, 'error');
+    } finally {
+      setPushBalanceTesting(false);
+    }
+  };
+
+  const sendPushContribution = async () => {
+    setPushContributionTesting(true);
+    try {
+      await runWithAuth({ title: "Send Contribution Status Push", adminOnly: true }, async () => {
+        await pushApi.sendContributionPush();
+        toast.show("💳 Contribution status push sent!");
+      });
+    } catch (err) {
+      if (err.message !== 'Cancelled') toast.show(`Push failed: ${err.message}`, 'error');
+    } finally {
+      setPushContributionTesting(false);
     }
   };
 
@@ -325,6 +397,13 @@ export default function Admin() {
           onClick={() => setActiveTab('telegram')}
         >
           <Send size={13} /> Telegram Bot
+        </button>
+        <button
+          type="button"
+          className={`chip ${activeTab === 'push' ? 'chip--active' : ''}`}
+          onClick={() => setActiveTab('push')}
+        >
+          <Bell size={13} /> Push Notifications
         </button>
       </div>
 
@@ -533,44 +612,37 @@ export default function Admin() {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
-            <div>
-              <label className="field-label">Telegram Bot Token</label>
-              <input
-                type="text"
-                className="text-input"
-                value={telegramConfig.token}
-                onChange={(e) => setTelegramConfig({ ...telegramConfig, token: e.target.value })}
-                placeholder="e.g. 8826854405:AAEi..."
-              />
-            </div>
-            <div>
-              <label className="field-label">Telegram Group Chat ID</label>
-              <input
-                type="text"
-                className="text-input"
-                value={telegramConfig.chatId}
-                onChange={(e) => setTelegramConfig({ ...telegramConfig, chatId: e.target.value })}
-                placeholder="e.g. -1001234567890 or your Group ID"
-              />
-              <span className="muted" style={{ fontSize: '11.5px', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                💡 <b>How to get Chat ID</b>: Add <b>@Sweet_Home_Updates_Bot</b> to your group, send any message in the group, and click <b>Send Test Msg 🚀</b>.
-              </span>
+            {/* Bot is pre-configured on the server — no manual token/chat ID needed */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              background: 'var(--surface-2)',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              border: '1px solid var(--border)'
+            }}>
+              <span style={{ fontSize: '18px' }}>🤖</span>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700 }}>Bot pre-configured</div>
+                <div style={{ fontSize: '11px', color: 'var(--muted)' }}>@Sweet_Home_Updates_Bot · Sweet Home Group</div>
+              </div>
+              <span style={{
+                marginLeft: 'auto',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#10b981',
+                background: '#10b98120',
+                borderRadius: '8px',
+                padding: '3px 10px'
+              }}>Active ✓</span>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-              <button
-                type="button"
-                className="btn btn--primary"
-                disabled={tgSaving}
-                onClick={saveTelegram}
-              >
-                {tgSaving ? 'Saving…' : 'Save Settings 💾'}
-              </button>
-
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="btn btn--ghost"
-                disabled={tgTesting || !telegramConfig.token || !telegramConfig.chatId}
+                disabled={tgTesting}
                 onClick={testTelegram}
               >
                 {tgTesting ? 'Sending…' : 'Send Test Msg 🚀'}
@@ -579,7 +651,7 @@ export default function Admin() {
               <button
                 type="button"
                 className="btn btn--ghost"
-                disabled={tgChoresTesting || !telegramConfig.token || !telegramConfig.chatId}
+                disabled={tgChoresTesting}
                 onClick={testChoresTelegram}
               >
                 {tgChoresTesting ? 'Sending…' : "Send Tomorrow's Chores 🧹"}
@@ -588,10 +660,89 @@ export default function Admin() {
               <button
                 type="button"
                 className="btn btn--ghost"
-                disabled={tgBalanceTesting || !telegramConfig.token || !telegramConfig.chatId}
+                disabled={tgBalanceTesting}
                 onClick={testBalanceTelegram}
               >
                 {tgBalanceTesting ? 'Sending…' : 'Send Balance Update 💰'}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {(activeTab === 'all' || activeTab === 'push') && (
+        <section className="card">
+          <div className="card__head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <Bell size={16} /> Web Push Notifications
+            </h3>
+            <span className="badge badge--admin">{subscribersCount} Device(s) Subscribed</span>
+          </div>
+          <p className="muted card__hint">
+            Native browser push notifications sent directly to housemates&apos; phones and desktops.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              background: 'var(--surface-2)',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              border: '1px solid var(--border)'
+            }}>
+              <span style={{ fontSize: '18px' }}>🔔</span>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700 }}>VAPID Service Active</div>
+                <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Automatic daily 8 PM cooking &amp; 5th contribution reminders</div>
+              </div>
+              <span style={{
+                marginLeft: 'auto',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#10b981',
+                background: '#10b98120',
+                borderRadius: '8px',
+                padding: '3px 10px'
+              }}>Active ✓</span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={pushTesting}
+                onClick={sendPushTest}
+              >
+                {pushTesting ? 'Sending…' : 'Send Test Push 🚀'}
+              </button>
+
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={pushCookingTesting}
+                onClick={sendPushCooking}
+              >
+                {pushCookingTesting ? 'Sending…' : 'Tomorrow Cooking 🍳'}
+              </button>
+
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={pushBalanceTesting}
+                onClick={sendPushBalance}
+              >
+                {pushBalanceTesting ? 'Sending…' : 'Remaining Balance 💰'}
+              </button>
+
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={pushContributionTesting}
+                onClick={sendPushContribution}
+              >
+                {pushContributionTesting ? 'Sending…' : 'Contribution Status 💳'}
               </button>
             </div>
           </div>

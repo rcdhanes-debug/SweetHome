@@ -52,18 +52,27 @@ export async function subscribeToPush() {
 
 export async function unsubscribeFromPush() {
   if (!('serviceWorker' in navigator)) return;
-  const reg = await navigator.serviceWorker.getRegistration(SW_PATH);
-  if (!reg) return;
-  const sub = await reg.pushManager.getSubscription();
-  if (!sub) return;
-  await api.post('/push/unsubscribe', { endpoint: sub.endpoint });
-  await sub.unsubscribe();
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if (!reg) return;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return;
+    await api.post('/push/unsubscribe', { endpoint: sub.endpoint });
+    await sub.unsubscribe();
+  } catch (err) {
+    console.warn('[push] unsubscribe failed:', err);
+  }
 }
 
 export async function getCurrentSubscription() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
   try {
-    const reg = await navigator.serviceWorker.getRegistration(SW_PATH);
+    // Use navigator.serviceWorker.ready — returns the active registration regardless of SW script path.
+    // getRegistration(path) looks for a scope match, not the script URL, which caused false nulls.
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+    ]);
     if (!reg) return null;
     return await reg.pushManager.getSubscription();
   } catch {
@@ -74,3 +83,29 @@ export async function getCurrentSubscription() {
 export function isPushSupported() {
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 }
+
+export async function getSubscriberCount() {
+  const res = await api.get('/push/subscribers');
+  return res.data?.count ?? 0;
+}
+
+export async function sendTestPush() {
+  const res = await api.post('/push/send-test');
+  return res.data;
+}
+
+export async function sendCookingPush() {
+  const res = await api.post('/push/send-cooking');
+  return res.data;
+}
+
+export async function sendBalancePush() {
+  const res = await api.post('/push/send-balance');
+  return res.data;
+}
+
+export async function sendContributionPush() {
+  const res = await api.post('/push/send-contribution');
+  return res.data;
+}
+

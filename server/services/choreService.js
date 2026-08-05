@@ -1,7 +1,7 @@
 const ChoreSchedule = require('../models/ChoreSchedule');
 const User = require('../models/User');
 const AppError = require('../utils/AppError');
-const { DEFAULT_SCHEDULE, DAYS, USER_ORDER } = require('../utils/constants');
+const { DEFAULT_SCHEDULE, DAYS } = require('../utils/constants');
 const { currentWeekday } = require('../utils/time');
 
 function assertValidIds(ids) {
@@ -32,71 +32,27 @@ function validateAssignment({ cooking, cleaning, homeClean }, allUsers) {
   }
 }
 
-function restingFor(dayDoc, allUsers) {
+// Converts a stored ChoreSchedule document to plain JSON.
+// No leave-of-absence substitution — what is stored is what is shown.
+function dayToJSON(dayDoc, allUsers) {
+  const userObj = (id) => {
+    const u = allUsers.find((x) => String(x._id) === String(id));
+    return u ? { _id: u._id, name: u.name } : null;
+  };
+
   const active = new Set(
     [...dayDoc.cooking, ...dayDoc.cleaning, dayDoc.homeClean].filter(Boolean).map(String)
   );
-  return allUsers.filter((u) => !active.has(String(u._id)));
-}
-
-// Leave-of-absence: away users are skipped in the daily rotation. Their slots
-// are backfilled from the resting pool (in house order) without rewriting the
-// stored schedule, so the original roster returns automatically when they come back.
-function effectiveRoster(dayDoc, allUsers) {
-  const away = new Set(allUsers.filter((u) => u.away).map((u) => String(u._id)));
-  if (away.size === 0) return null;
-
-  const assignedRaw = [...dayDoc.cooking, ...dayDoc.cleaning, dayDoc.homeClean].filter(Boolean).map(String);
-  const used = new Set(assignedRaw);
-  const pool = allUsers
-    .filter((u) => !away.has(String(u._id)) && !used.has(String(u._id)))
-    .sort((a, b) => USER_ORDER.indexOf(a.name) - USER_ORDER.indexOf(b.name));
-
-  const fill = (ids) => {
-    const out = [];
-    for (const id of ids) {
-      if (away.has(String(id))) {
-        const rep = pool.shift();
-        if (rep) out.push(String(rep._id));
-      } else {
-        out.push(String(id));
-      }
-    }
-    return out;
-  };
-
-  return {
-    cooking: fill(dayDoc.cooking),
-    cleaning: fill(dayDoc.cleaning),
-    homeClean: dayDoc.homeClean && away.has(String(dayDoc.homeClean))
-      ? (pool.shift()?._id || null)
-      : dayDoc.homeClean
-  };
-}
-
-function dayToJSON(dayDoc, allUsers) {
-  const eff = effectiveRoster(dayDoc, allUsers) || {
-    cooking: dayDoc.cooking,
-    cleaning: dayDoc.cleaning,
-    homeClean: dayDoc.homeClean
-  };
-
-  const userObj = (id) => {
-    const u = allUsers.find((x) => String(x._id) === String(id));
-    return u ? { _id: u._id, name: u.name, away: Boolean(u.away) } : null;
-  };
-
-  const active = new Set([...eff.cooking, ...eff.cleaning, eff.homeClean].filter(Boolean).map(String));
 
   return {
     _id: dayDoc._id,
     day: dayDoc.day,
-    cooking: eff.cooking.map(userObj).filter(Boolean),
-    cleaning: eff.cleaning.map(userObj).filter(Boolean),
-    homeClean: eff.homeClean ? userObj(eff.homeClean) : null,
+    cooking: dayDoc.cooking.map(userObj).filter(Boolean),
+    cleaning: dayDoc.cleaning.map(userObj).filter(Boolean),
+    homeClean: dayDoc.homeClean ? userObj(dayDoc.homeClean) : null,
     resting: allUsers
-      .filter((u) => !active.has(String(u._id)) && !u.away)
-      .map((u) => ({ _id: u._id, name: u.name, away: false })),
+      .filter((u) => !active.has(String(u._id)))
+      .map((u) => ({ _id: u._id, name: u.name })),
     updatedBy: dayDoc.updatedBy || null,
     updatedAt: dayDoc.updatedAt || null
   };
@@ -159,7 +115,11 @@ async function updateDay({ day, cooking, cleaning, homeClean, updatedBy }) {
   const doc = await ChoreSchedule.findOne({ day });
   if (!doc) throw new AppError('Schedule not found.', 404);
 
-  const before = { cooking: doc.cooking.map(String), cleaning: doc.cleaning.map(String), homeClean: doc.homeClean ? String(doc.homeClean) : null };
+  const before = {
+    cooking: doc.cooking.map(String),
+    cleaning: doc.cleaning.map(String),
+    homeClean: doc.homeClean ? String(doc.homeClean) : null
+  };
 
   doc.cooking = cooking;
   doc.cleaning = cleaning;

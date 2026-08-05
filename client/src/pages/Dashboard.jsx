@@ -151,8 +151,6 @@ export default function Dashboard() {
     .filter((e) => e.date >= todayISTDateString())
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 3);
-  const atHome = users.filter((u) => !u.away);
-  const awayCount = users.length - atHome.length;
 
   const onPickPhoto = (e) => {
     const file = e.target.files?.[0];

@@ -1,59 +1,38 @@
 import { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
-import { isPushSupported, subscribeToPush, getCurrentSubscription } from '../services/push';
-
-const LS_KEY = 'push-enabled';
+import { isPushSupported, subscribeToPush } from '../services/push';
 
 export default function PushNotificationBanner() {
-  // Start hidden until we've checked — avoids flash
-  const [ready, setReady] = useState(false);
-  const [supported, setSupported] = useState(false);
-  const [subscribed, setSubscribed] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [permission, setPermission] = useState('default');
 
   useEffect(() => {
-    if (!isPushSupported()) { setReady(true); return; }
-    setSupported(true);
-    setPermission(Notification.permission);
+    if (!isPushSupported()) return;
 
-    // If permission already denied, nothing to show
-    if (Notification.permission === 'denied') { setReady(true); return; }
+    // If browser already has permission, never show the banner
+    if (Notification.permission === 'granted') return;
 
-    // If localStorage says already subscribed, hide immediately without async wait
-    if (localStorage.getItem(LS_KEY) === 'true') {
-      setSubscribed(true);
-      setReady(true);
-      return;
-    }
+    // If browser blocked permission, nothing we can do
+    if (Notification.permission === 'denied') return;
 
-    // If dismissed, hide
-    if (localStorage.getItem('push-banner-dismissed') === 'true') {
-      setDismissed(true);
-      setReady(true);
-      return;
-    }
+    // If user dismissed the banner before, respect that
+    if (localStorage.getItem('push-banner-dismissed') === 'true') return;
 
-    // Async verify actual subscription (covers cases where user cleared browser data)
-    getCurrentSubscription().then((sub) => {
-      if (sub) {
-        localStorage.setItem(LS_KEY, 'true');
-        setSubscribed(true);
-      }
-      setReady(true);
-    }).catch(() => setReady(true));
+    // Only show banner if permission is still 'default' (not yet asked)
+    setShow(true);
   }, []);
 
   const handleEnable = async () => {
     setLoading(true);
     try {
       await subscribeToPush();
-      localStorage.setItem(LS_KEY, 'true');
-      setSubscribed(true);
-      setPermission('granted');
+      // Hide banner permanently once permission is granted
+      setShow(false);
     } catch (err) {
-      if (err.message.includes('denied')) setPermission('denied');
+      // If user denied in the popup, hide banner too (nothing more to do)
+      if (Notification.permission === 'denied' || Notification.permission === 'granted') {
+        setShow(false);
+      }
       console.warn('[push]', err.message);
     } finally {
       setLoading(false);
@@ -62,18 +41,13 @@ export default function PushNotificationBanner() {
 
   const handleDismiss = () => {
     localStorage.setItem('push-banner-dismissed', 'true');
-    setDismissed(true);
+    setShow(false);
   };
 
-  // Don't render until we've checked state (prevents flash)
-  if (!ready) return null;
-
-  // Hide if not supported, already subscribed, dismissed, or blocked
-  if (!supported || subscribed || dismissed || permission === 'denied') return null;
+  if (!show) return null;
 
   return (
     <div
-      className="push-banner"
       style={{
         display: 'flex',
         alignItems: 'center',

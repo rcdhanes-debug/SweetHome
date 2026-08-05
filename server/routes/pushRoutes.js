@@ -26,4 +26,40 @@ router.post('/unsubscribe', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// GET /api/push/subscribers — count of active push subscribers (admin info)
+router.get('/subscribers', asyncHandler(async (req, res) => {
+  const PushSubscription = require('../models/PushSubscription');
+  const count = await PushSubscription.countDocuments();
+  res.json({ count });
+}));
+
+// POST /api/push/send-test — manually send a test push to all devices (admin only)
+router.post('/send-test', asyncHandler(async (req, res) => {
+  const sent = await pushService.sendToAll(
+    '🏠 Sweet Home — Test Push',
+    'Push notifications are working correctly! 🎉',
+    { url: '/' }
+  );
+  res.json({ ok: true, sent });
+}));
+
+// POST /api/push/send-cooking — manually trigger cooking push (admin)
+router.post('/send-cooking', asyncHandler(async (req, res) => {
+  await pushService.sendTomorrowCookingPush();
+  res.json({ ok: true });
+}));
+
+// POST /api/push/send-balance — manually trigger balance push (admin)
+router.post('/send-balance', asyncHandler(async (req, res) => {
+  await pushService.sendRemainingBalancePush();
+  res.json({ ok: true });
+}));
+
+// POST /api/push/send-contribution — manually trigger contribution status push (admin)
+router.post('/send-contribution', asyncHandler(async (req, res) => {
+  await pushService.sendContributionStatusPush();
+  res.json({ ok: true });
+}));
+
 module.exports = router;
+

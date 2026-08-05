@@ -84,7 +84,9 @@ async function seedChoreSchedule() {
       updateOne: {
         filter: { day },
         update: {
-          $set: {
+          // $setOnInsert: only writes when the document is NEW (upsert insert).
+          // Existing admin-edited schedules are NEVER overwritten on server restart.
+          $setOnInsert: {
             day,
             cooking: s.cooking.map((n) => byName[n]).filter(Boolean),
             cleaning: s.cleaning.map((n) => byName[n]).filter(Boolean),
@@ -99,6 +101,7 @@ async function seedChoreSchedule() {
   await ChoreSchedule.bulkWrite(ops);
   console.log(`Seeded default chore schedule for ${DAYS.length} days.`);
 }
+
 
 async function seedAll({ force = false } = {}) {
   const users = await seedUsers({ force });

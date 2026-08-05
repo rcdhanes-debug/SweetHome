@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { ArrowLeftRight, RotateCcw, PlaneTakeoff } from 'lucide-react';
+import { ArrowLeftRight, RotateCcw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import * as choreApi from '../services/chores';
-import * as userApi from '../services/users';
 import ChoreDayCard from '../components/ChoreDayCard';
 import DutyBlock from '../components/DutyBlock';
-import Avatar from '../components/Avatar';
 import SwapModal from '../components/SwapModal';
 import ScheduleEditor from '../components/ScheduleEditor';
 import ConfirmModal from '../components/ConfirmModal';
@@ -15,7 +13,7 @@ import Skeleton from '../components/Skeleton';
 import { todayDayName } from '../utils/format';
 
 export default function Chores() {
-  const { chores, today, users, loading, reloadChores, reloadUsers } = useApp();
+  const { chores, today, users, loading, reloadChores } = useApp();
   const { isAdmin, runWithAuth } = useAuth();
   const toast = useToast();
 
@@ -23,7 +21,6 @@ export default function Chores() {
   const [editingDay, setEditingDay] = useState(null);
   const [confirmRestore, setConfirmRestore] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [awayBusy, setAwayBusy] = useState('');
 
   const doSwap = async ({ day, personA, personB }) => {
     setBusy(true);
@@ -70,29 +67,6 @@ export default function Chores() {
       if (err.message !== 'Cancelled') toast.show(err.message, 'error');
     } finally {
       setBusy(false);
-    }
-  };
-
-  const toggleAway = async (u) => {
-    setAwayBusy(u._id);
-    const next = !u.away;
-    try {
-      await runWithAuth(
-        {
-          title: 'Leave of Absence',
-          subtitle: next ? `Mark ${u.name} as away (skipped in chores)?` : `Welcome back, ${u.name}?`,
-          defaultName: u.name
-        },
-        async (token) => {
-          await userApi.setAway(token, u._id, next);
-        }
-      );
-      toast.show(next ? `${u.name} marked as away — skipped in chores` : `✓ ${u.name} is back`);
-      await Promise.all([reloadUsers(), reloadChores()]);
-    } catch (err) {
-      if (err.message !== 'Cancelled') toast.show(err.message, 'error');
-    } finally {
-      setAwayBusy('');
     }
   };
 
@@ -163,42 +137,6 @@ export default function Chores() {
           ))}
         </div>
       )}
-
-      <section className="card">
-        <div className="card__head">
-          <h3>
-            <PlaneTakeoff size={16} /> Leave of Absence
-          </h3>
-          <span className="badge badge--away">{users.filter((u) => u.away).length} away</span>
-        </div>
-        <p className="muted card__hint">Away members are automatically skipped in the chore rotation. Toggle with your PIN.</p>
-        {loading.users ? (
-          <Skeleton height={80} />
-        ) : (
-          <div className="away-list">
-            {users.map((u) => (
-              <div key={u._id} className={`away-row ${u.away ? 'away-row--away' : ''}`}>
-                <Avatar name={u.name} />
-                <div className="away-row__info">
-                  <div className="away-row__name">{u.name}</div>
-                  <div className="away-row__sub">{u.away ? 'Away — skipped in chores' : 'In rotation'}</div>
-                </div>
-                <label className={`switch ${u.away ? 'switch--on' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(u.away)}
-                    disabled={awayBusy === u._id}
-                    onChange={() => toggleAway(u)}
-                  />
-                  <span className="switch__track">
-                    <span className="switch__thumb" />
-                  </span>
-                </label>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
       <SwapModal open={swapOpen} onClose={() => setSwapOpen(false)} chores={chores} onConfirm={doSwap} loading={busy} />
 
