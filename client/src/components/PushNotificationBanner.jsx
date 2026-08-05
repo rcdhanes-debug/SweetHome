@@ -1,27 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 import { isPushSupported, subscribeToPush } from '../services/push';
+import { useToast } from '../context/ToastContext';
 
 export default function PushNotificationBanner() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     if (!isPushSupported()) return;
 
-    // If user already dismissed, don't show
+    // If user already dismissed, don't show banner
     if (localStorage.getItem('push-banner-dismissed') === 'true') return;
 
-    // If permission is already granted, auto-sync with backend in background and hide banner
+    // If permission is already granted, auto-sync subscription with backend silently
     if (Notification.permission === 'granted') {
       subscribeToPush().catch((err) => console.warn('[push auto-sync failed]', err));
       return;
     }
 
-    // If browser blocked permission, don't show
+    // If browser blocked permission, don't show banner
     if (Notification.permission === 'denied') return;
 
-    // Show banner only if permission is 'default' (never asked before)
+    // Show banner only if permission is 'default' (not yet asked)
     setShow(true);
   }, []);
 
@@ -29,11 +31,13 @@ export default function PushNotificationBanner() {
     setLoading(true);
     try {
       await subscribeToPush();
-    } catch (err) {
-      console.warn('[push enable error]', err.message);
-    } finally {
       localStorage.setItem('push-banner-dismissed', 'true');
       setShow(false);
+      toast.show('✓ Push notifications enabled successfully!');
+    } catch (err) {
+      console.error('[push enable error]', err);
+      toast.show(`Failed to enable push: ${err.message}`, 'error');
+    } finally {
       setLoading(false);
     }
   };
