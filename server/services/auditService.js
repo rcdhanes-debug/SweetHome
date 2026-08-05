@@ -49,13 +49,11 @@ async function log({ action, performedBy = null, targetUser = null, details = {}
       createdBy: performedBy
     });
 
-    // Send Telegram notification ONLY for Balance and Chore updates
+    // Send Telegram notification ONLY for Balance updates (Chore schedule sent automatically at 9:00 PM IST)
     try {
       const telegram = require('./telegramService');
       if (['CONTRIBUTION_PAID', 'CONTRIBUTION_RESET', 'FUNDING_AMOUNT_SET', 'COMMON_ACCOUNT_UPDATED'].includes(action)) {
         telegram.sendRemainingMoneyNotification().catch(() => {});
-      } else if (['CHORE_SWAP', 'CHORE_UPDATED'].includes(action)) {
-        telegram.sendTomorrowChoresNotification().catch(() => {});
       }
     } catch (_) {}
   } catch (err) {
