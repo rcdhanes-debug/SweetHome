@@ -26,7 +26,7 @@ export async function registerServiceWorker() {
 
 export async function getVapidPublicKey() {
   const res = await api.get('/push/vapid-public-key');
-  return res.data.publicKey;
+  return res?.publicKey || res?.data?.publicKey;
 }
 
 export async function subscribeToPush() {
@@ -48,6 +48,7 @@ export async function subscribeToPush() {
   ]).catch(() => reg);
 
   const publicKey = await getVapidPublicKey();
+  if (!publicKey) throw new Error('Failed to retrieve VAPID public key from server.');
 
   let sub = await activeReg.pushManager.getSubscription();
   if (!sub) {
@@ -92,25 +93,25 @@ export async function getCurrentSubscription() {
 
 export async function getSubscriberCount() {
   const res = await api.get('/push/subscribers');
-  return res.data?.count ?? 0;
+  return res?.count ?? res?.data?.count ?? 0;
 }
 
 export async function sendTestPush() {
   const res = await api.post('/push/send-test');
-  return res.data;
+  return res;
 }
 
 export async function sendCookingPush() {
   const res = await api.post('/push/send-cooking');
-  return res.data;
+  return res;
 }
 
 export async function sendBalancePush() {
   const res = await api.post('/push/send-balance');
-  return res.data;
+  return res;
 }
 
 export async function sendContributionPush() {
   const res = await api.post('/push/send-contribution');
-  return res.data;
+  return res;
 }
