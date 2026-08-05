@@ -9,6 +9,10 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
+export function isPushSupported() {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
 export async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return null;
   try {
@@ -26,7 +30,7 @@ export async function getVapidPublicKey() {
 }
 
 export async function subscribeToPush() {
-  if (!('Notification' in window) || !('PushManager' in window)) {
+  if (!isPushSupported()) {
     throw new Error('Push notifications not supported in this browser.');
   }
 
@@ -38,20 +42,28 @@ export async function subscribeToPush() {
   const reg = await registerServiceWorker();
   if (!reg) throw new Error('Service worker not available.');
 
-  await navigator.serviceWorker.ready;
+  const activeReg = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((resolve) => setTimeout(() => resolve(reg), 2000))
+  ]).catch(() => reg);
 
   const publicKey = await getVapidPublicKey();
-  const subscription = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey)
-  });
 
-  await api.post('/push/subscribe', { subscription });
-  return subscription;
+  let sub = await activeReg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await activeReg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+  }
+
+  const payload = sub.toJSON ? sub.toJSON() : JSON.parse(JSON.stringify(sub));
+  await api.post('/push/subscribe', { subscription: payload });
+  return sub;
 }
 
 export async function unsubscribeFromPush() {
-  if (!('serviceWorker' in navigator)) return;
+  if (!isPushSupported()) return;
   try {
     const reg = await navigator.serviceWorker.ready;
     if (!reg) return;
@@ -65,10 +77,8 @@ export async function unsubscribeFromPush() {
 }
 
 export async function getCurrentSubscription() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  if (!isPushSupported()) return null;
   try {
-    // Use navigator.serviceWorker.ready — returns the active registration regardless of SW script path.
-    // getRegistration(path) looks for a scope match, not the script URL, which caused false nulls.
     const reg = await Promise.race([
       navigator.serviceWorker.ready,
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
@@ -78,10 +88,6 @@ export async function getCurrentSubscription() {
   } catch {
     return null;
   }
-}
-
-export function isPushSupported() {
-  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 }
 
 export async function getSubscriberCount() {
@@ -108,4 +114,3 @@ export async function sendContributionPush() {
   const res = await api.post('/push/send-contribution');
   return res.data;
 }
-

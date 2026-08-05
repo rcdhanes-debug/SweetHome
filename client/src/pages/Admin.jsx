@@ -64,6 +64,7 @@ export default function Admin() {
   const [tgBalanceTesting, setTgBalanceTesting] = useState(false);
 
   const [subscribersCount, setSubscribersCount] = useState(0);
+  const [registeringDevice, setRegisteringDevice] = useState(false);
   const [pushTesting, setPushTesting] = useState(false);
   const [pushCookingTesting, setPushCookingTesting] = useState(false);
   const [pushBalanceTesting, setPushBalanceTesting] = useState(false);
@@ -226,6 +227,19 @@ export default function Admin() {
       if (err.message !== 'Cancelled') toast.show(`Push failed: ${err.message}`, 'error');
     } finally {
       setPushContributionTesting(false);
+    }
+  };
+
+  const registerThisDevice = async () => {
+    setRegisteringDevice(true);
+    try {
+      await pushApi.subscribeToPush();
+      toast.show('✓ Device subscribed to push notifications!');
+      await loadPushSubscribers();
+    } catch (err) {
+      toast.show(`Subscription failed: ${err.message}`, 'error');
+    } finally {
+      setRegisteringDevice(false);
     }
   };
 
@@ -709,6 +723,15 @@ export default function Admin() {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={registeringDevice}
+                onClick={registerThisDevice}
+              >
+                {registeringDevice ? 'Subscribing…' : 'Subscribe This Device 📱'}
+              </button>
+
               <button
                 type="button"
                 className="btn btn--ghost"

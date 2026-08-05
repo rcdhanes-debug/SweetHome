@@ -9,16 +9,17 @@ export default function PushNotificationBanner() {
   useEffect(() => {
     if (!isPushSupported()) return;
 
-    // If browser already has permission, never show the banner
-    if (Notification.permission === 'granted') return;
+    // If permission is already granted, ensure subscription is synced with server
+    if (Notification.permission === 'granted') {
+      subscribeToPush().catch((err) => console.warn('[push auto-sync failed]', err));
+      return;
+    }
 
-    // If browser blocked permission, nothing we can do
+    // If browser blocked permission or user dismissed, don't show
     if (Notification.permission === 'denied') return;
-
-    // If user dismissed the banner before, respect that
     if (localStorage.getItem('push-banner-dismissed') === 'true') return;
 
-    // Only show banner if permission is still 'default' (not yet asked)
+    // Show banner only if permission is still 'default' (not yet asked)
     setShow(true);
   }, []);
 
@@ -26,10 +27,8 @@ export default function PushNotificationBanner() {
     setLoading(true);
     try {
       await subscribeToPush();
-      // Hide banner permanently once permission is granted
       setShow(false);
     } catch (err) {
-      // If user denied in the popup, hide banner too (nothing more to do)
       if (Notification.permission === 'denied' || Notification.permission === 'granted') {
         setShow(false);
       }
