@@ -1,0 +1,94 @@
+const cron = require('node-cron');
+const funding = require('../services/fundingService');
+const notifications = require('../services/notificationService');
+const Event = require('../models/Event');
+const { HOUSEHOLD_TZ, istParts } = require('../utils/time');
+const { PAYMENT_DEADLINE_DAY } = require('../utils/constants');
+
+const DAY_MS = 86400000;
+
+async function tomorrowEvents() {
+  const p = istParts(new Date());
+  const todayUtc = new Date(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)));
+  const start = new Date(todayUtc.getTime() + DAY_MS);
+  const end = new Date(start.getTime() + DAY_MS);
+  return Event.find({ date: { $gte: start, $lt: end } });
+}
+
+async function runReminderChecks() {
+  const p = istParts(new Date());
+  const todayDay = Number(p.day);
+
+  // 1. Contribution due after the monthly deadline.
+  if (todayDay >= PAYMENT_DEADLINE_DAY) {
+    const month = `${p.year}-${p.month}`;
+    const summary = await funding.getCurrentSummary();
+    const pending = summary.payments.filter((pay) => !pay.paid);
+    if (pending.length > 0) {
+      await notifications.upsertContributionDue(month, pending.map((pay) => pay.user?.name || 'Member'));
+    } else {
+      await notifications.resolveContributionDue(month);
+    }
+  }
+
+  // 2. Remind about tomorrow's events.
+  const upcoming = await tomorrowEvents();
+  if (upcoming.length > 0) {
+    await notifications.ensureEventReminders(
+      upcoming.map((ev) => ({ _id: ev._id, title: ev.title, type: ev.type, date: ev.date.toISOString().slice(0, 10), time: ev.time }))
+    );
+  }
+}
+
+// Run twice a day so reminders appear morning and evening.
+function startReminderJobs() {
+  const job = cron.schedule(
+    '0 8,20 * * *',
+    async () => {
+      console.log('[cron] Reminder checks triggered.');
+      try {
+        await runReminderChecks();
+      } catch (err) {
+        console.error('[cron] Reminder check failed:', err.message);
+      }
+    },
+    { timezone: HOUSEHOLD_TZ }
+  );
+  console.log(`[cron] Reminder checks scheduled: daily 08:00 & 20:00 (${HOUSEHOLD_TZ}).`);
+
+  // Daily 9:00 PM (21:00 IST) Telegram alert for Tomorrow's Chores schedule
+  cron.schedule(
+    '0 21 * * *',
+    async () => {
+      console.log('[cron] 9:00 PM Tomorrow Chores Telegram alert triggered.');
+      try {
+        const telegram = require('../services/telegramService');
+        await telegram.sendTomorrowChoresNotification();
+      } catch (err) {
+        console.error('[cron] Tomorrow Chores Telegram alert failed:', err.message);
+      }
+    },
+    { timezone: HOUSEHOLD_TZ }
+  );
+  console.log(`[cron] Telegram 9:00 PM Tomorrow's Chores scheduled: daily 21:00 (${HOUSEHOLD_TZ}).`);
+
+  // Every 2 days at 10:00 AM IST Telegram alert for Remaining Money / Available Balance
+  cron.schedule(
+    '0 10 */2 * *',
+    async () => {
+      console.log('[cron] 2-day Remaining Money Telegram alert triggered.');
+      try {
+        const telegram = require('../services/telegramService');
+        await telegram.sendRemainingMoneyNotification();
+      } catch (err) {
+        console.error('[cron] Remaining Money Telegram alert failed:', err.message);
+      }
+    },
+    { timezone: HOUSEHOLD_TZ }
+  );
+  console.log(`[cron] Telegram 2-day Remaining Money update scheduled: 10:00 AM every 2 days (${HOUSEHOLD_TZ}).`);
+
+  return job;
+}
+
+module.exports = { startReminderJobs, runReminderChecks };
