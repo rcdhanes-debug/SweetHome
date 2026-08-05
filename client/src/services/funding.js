@@ -6,7 +6,7 @@ export const getCurrent = () => api.get('/funding/current');
 export const getHistory = () => api.get('/funding/history');
 export const getReport = (month) => api.get('/funding/report', { params: { month } });
 
-export const pay = (token, userId, amount) => api.post(`/funding/${userId}/pay`, { amount }, auth(token));
+export const pay = (userId, amount, recordedBy) => api.post(`/funding/${userId}/pay`, { amount, recordedBy });
 export const setStatus = (token, userId, paid, paidAt) =>
   api.patch(`/funding/${userId}/status`, { paid, paidAt }, auth(token));
 export const resetMonth = (token, month) => api.post('/funding/reset', { month }, auth(token));

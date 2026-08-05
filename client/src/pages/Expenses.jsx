@@ -57,16 +57,7 @@ export default function Expenses() {
         );
         toast.show('✓ Expense updated');
       } else {
-        await runWithAuth(
-          {
-            title: 'Add Expense',
-            subtitle: `${formatCurrency(data.amount)} • ${data.category} • Paid by ${paidByUser?.name || ''}`,
-            defaultName: paidByUser?.name || session?.user?.name
-          },
-          async (token) => {
-            await expenseApi.create(token, data);
-          }
-        );
+        await expenseApi.create(data);
         toast.show('✓ Expense added');
       }
       setSheetOpen(false);

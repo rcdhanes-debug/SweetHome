@@ -16,7 +16,7 @@ import Confetti from '../components/Confetti';
 import { formatCurrency, monthLabel, deadlineInfo } from '../utils/format';
 
 export default function Collection() {
-  const { funding, history, loading, reloadFunding } = useApp();
+  const { funding, history, users, loading, reloadFunding } = useApp();
   const { isAdmin, runWithAuth } = useAuth();
   const toast = useToast();
   const reduced = useReducedMotion();
@@ -60,6 +60,12 @@ export default function Collection() {
     }
     return opts;
   })();
+
+  const openAmountSheet = () => {
+    setMonthSelect(funding.month);
+    setAmountInput(String(funding.contributionAmount || 0));
+    setShowAmount(true);
+  };
 
   const openRolloverSheet = () => {
     setRolloverInput(String(funding.rolloverBalance || 0));
@@ -122,27 +128,17 @@ export default function Collection() {
     setPayTarget({ payment });
   };
 
-  const confirmPayAmount = async (amount) => {
+  const confirmPayAmount = async ({ amount, recordedBy }) => {
     const { payment } = payTarget;
     setPayTarget(null);
     setBusyId(payment.user._id);
     try {
-      await runWithAuth(
-        {
-          title: 'Confirm Contribution',
-          subtitle: `${payment.user.name} • ${formatCurrency(amount)}`,
-          defaultName: payment.user.name,
-          adminOnly: true
-        },
-        async (token) => {
-          await fundingApi.pay(token, payment.user._id, amount);
-        }
-      );
+      await fundingApi.pay(payment.user._id, amount, recordedBy);
       toast.show(`✓ ${formatCurrency(amount)} marked as paid`);
       setCelebrate(true);
       await reloadFunding();
     } catch (err) {
-      if (err.message !== 'Cancelled') toast.show(err.message, 'error');
+      toast.show(err.message || 'Failed to record payment', 'error');
     } finally {
       setBusyId('');
     }
@@ -292,9 +288,11 @@ export default function Collection() {
 
       <AmountModal
         open={Boolean(payTarget)}
-        title="Payment Amount"
+        users={users}
+        title="Confirm Contribution"
         subtitle={payTarget ? `${payTarget.payment.user.name} • Payment received` : undefined}
         defaultAmount={payTarget?.payment.amount}
+        defaultUser={payTarget?.payment.user._id}
         onConfirm={confirmPayAmount}
         onCancel={() => setPayTarget(null)}
       />

@@ -9,7 +9,7 @@ router.get('/report', getReport);
 router.post('/settings', requireAuth, requireAdmin, setContributionAmount);
 router.post('/rollover', requireAuth, requireAdmin, setRolloverAmount);
 router.patch('/common-account', requireAuth, requireAdmin, updateCommonAccount);
-router.post('/:userId/pay', requireAuth, requireAdmin, markPaid);
+router.post('/:userId/pay', markPaid);
 router.patch('/:userId/status', requireAuth, requireAdmin, setStatus);
 router.post('/reset', requireAuth, requireAdmin, resetMonth);
 

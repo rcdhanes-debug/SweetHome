@@ -19,14 +19,14 @@ const getReport = asyncHandler(async (req, res) => {
 
 const markPaid = asyncHandler(async (req, res) => {
   const { userId } = req.params;
-  const me = req.user;
-  const { amount } = req.body || {};
+  const { amount, recordedBy } = req.body || {};
+  const performedBy = recordedBy || (req.user ? req.user._id : userId);
 
-  const summary = await funding.markPaid({ userId, amount, performedBy: me._id });
+  const summary = await funding.markPaid({ userId, amount, performedBy });
 
   await audit.log({
     action: 'CONTRIBUTION_PAID',
-    performedBy: me._id,
+    performedBy,
     targetUser: userId,
     details: { month: monthKey(), amount }
   });

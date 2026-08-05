@@ -16,16 +16,17 @@ const currentMonth = asyncHandler(async (req, res) => {
 
 const create = asyncHandler(async (req, res) => {
   const body = expenses.validateExpenseBody(req.body || {});
+  const userId = req.user ? req.user._id : body.paidBy;
 
-  if (req.user.role !== 'admin' && String(body.paidBy) !== String(req.user._id)) {
+  if (req.user && req.user.role !== 'admin' && String(body.paidBy) !== String(req.user._id)) {
     throw new AppError('You can only record an expense you paid for.', 403);
   }
 
-  const expense = await expenses.createExpense({ ...body, createdBy: req.user._id });
+  const expense = await expenses.createExpense({ ...body, createdBy: userId });
 
   await audit.log({
     action: 'EXPENSE_CREATED',
-    performedBy: req.user._id,
+    performedBy: userId,
     details: {
       id: expense._id,
       amount: expense.amount,

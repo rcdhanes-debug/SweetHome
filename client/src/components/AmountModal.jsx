@@ -3,16 +3,18 @@ import BottomSheet from './BottomSheet';
 import { formatCurrency } from '../utils/format';
 import { CONTRIBUTION_AMOUNT } from '../constants';
 
-export default function AmountModal({ open, title, subtitle, defaultAmount, onConfirm, onCancel }) {
+export default function AmountModal({ open, users = [], title, subtitle, defaultAmount, defaultUser, onConfirm, onCancel }) {
   const [amount, setAmount] = useState('');
+  const [recordedBy, setRecordedBy] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
       setAmount(defaultAmount && defaultAmount > 0 ? String(defaultAmount) : String(CONTRIBUTION_AMOUNT));
+      setRecordedBy(defaultUser || (users[0] ? users[0]._id : ''));
       setLoading(false);
     }
-  }, [open, defaultAmount]);
+  }, [open, defaultAmount, defaultUser, users]);
 
   const amountNum = Number(amount);
   const valid = Number.isFinite(amountNum) && amountNum > 0 && amountNum <= 100000000;
@@ -20,11 +22,11 @@ export default function AmountModal({ open, title, subtitle, defaultAmount, onCo
   const confirm = () => {
     if (!valid || loading) return;
     setLoading(true);
-    onConfirm?.(Math.round(amountNum * 100) / 100);
+    onConfirm?.({ amount: Math.round(amountNum * 100) / 100, recordedBy });
   };
 
   return (
-    <BottomSheet open={open} onClose={onCancel} title={title || 'Payment Amount'}>
+    <BottomSheet open={open} onClose={onCancel} title={title || 'Confirm Contribution'}>
       {subtitle && <p className="sheet-subtitle">{subtitle}</p>}
 
       <label className="field-label">Amount received</label>
@@ -43,8 +45,21 @@ export default function AmountModal({ open, title, subtitle, defaultAmount, onCo
         {valid && <span className="amount-input__preview">{formatCurrency(amountNum)}</span>}
       </div>
 
+      {users && users.length > 0 && (
+        <>
+          <label className="field-label">Recorded By</label>
+          <select className="select" value={recordedBy} onChange={(e) => setRecordedBy(e.target.value)}>
+            {users.map((u) => (
+              <option key={u._id} value={u._id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
+
       <div className="notice notice--muted">
-        Default is ₹{CONTRIBUTION_AMOUNT.toLocaleString('en-IN')}. Enter the actual amount received if it differs.
+        Select the person recording this payment. No PIN is required.
       </div>
 
       <div className="sheet-actions">
@@ -57,7 +72,7 @@ export default function AmountModal({ open, title, subtitle, defaultAmount, onCo
               <span className="spinner" /> Saving…
             </>
           ) : (
-            'Continue'
+            'Confirm Payment'
           )}
         </button>
       </div>

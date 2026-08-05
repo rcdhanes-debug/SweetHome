@@ -42,7 +42,7 @@ export default function PaymentCard({ payment, isAdmin, onMarkPaid, onTogglePend
         )}
       </div>
 
-      {!paid && isAdmin && (
+      {!paid && (
         <button
           type="button"
           className="btn btn--primary btn--block"

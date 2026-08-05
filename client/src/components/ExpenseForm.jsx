@@ -104,10 +104,6 @@ export default function ExpenseForm({ users, initial, submitting, onSubmit, onCa
         ))}
       </select>
 
-      <div className="notice notice--muted">
-        A PIN check is required to confirm this expense.
-      </div>
-
       <div className="sheet-actions">
         <button type="button" className="btn btn--ghost" onClick={onCancel}>
           Cancel
