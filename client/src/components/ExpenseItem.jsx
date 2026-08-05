@@ -17,8 +17,8 @@ export default function ExpenseItem({ expense, canEdit = true, onEdit, onDelete 
     >
       <CategoryIcon category={expense.category} size={20} />
       <div className="expense-item__body">
-        <div className="expense-item__category">{expense.category}</div>
-        {expense.description && <div className="expense-item__desc">{expense.description}</div>}
+        <div className="expense-item__category">{expense.description || expense.category}</div>
+        {expense.description && <div className="expense-item__desc">{expense.category}</div>}
         <div className="expense-item__meta">
           <span>Paid by {expense.paidBy?.name || '—'}</span>
           <span>•</span>

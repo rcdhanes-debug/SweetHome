@@ -86,12 +86,26 @@ async function handleCommand(msg, token) {
     return replyTelegram(token, chatId, reply);
   }
 
+  if (command === '/redeem') {
+    const Redeem = require('../models/Redeem');
+    const openRedeems = await Redeem.find({ closed: false }).populate('createdBy', 'name');
+    if (!openRedeems || openRedeems.length === 0) {
+      return replyTelegram(token, chatId, `🎉 <b>No unpaid redeem requests!</b>\nAll redeem requests are currently settled and closed.`);
+    }
+    const itemsList = openRedeems
+      .map((r) => `• <b>${r.createdBy?.name || 'Member'}</b>: ₹${r.amount.toLocaleString('en-IN')}${r.note ? ` (${r.note})` : ''} — <code>${r.upiId}</code>`)
+      .join('\n');
+    const reply = `🤝 <b>Unpaid Redeem Requests (${openRedeems.length})</b>\n\n${itemsList}\n\nHi <b>Ashwin</b>! 👋 Please kindly check when you get a moment! ✨`;
+    return replyTelegram(token, chatId, reply);
+  }
+
   if (command === '/help' || command === '/start') {
     const reply = `🏠 <b>Sweet Home Telegram Bot Commands</b>\n\n` +
       `💰 /getbalance - Check live remaining balance\n` +
       `🍳 /today - View today's duty schedule\n` +
       `🌙 /tomorrow - View tomorrow's duty schedule\n` +
       `⏳ /pending - See who is pending payment\n` +
+      `🤝 /redeem - Check unpaid redeem requests\n` +
       `ℹ️ /help - Show this commands list`;
     return replyTelegram(token, chatId, reply);
   }

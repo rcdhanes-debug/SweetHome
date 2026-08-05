@@ -119,11 +119,37 @@ async function sendRemainingMoneyNotification() {
   return sendTelegramMessage(text);
 }
 
+async function sendUnpaidRedeemReminder() {
+  const Redeem = require('../models/Redeem');
+  const openRedeems = await Redeem.find({ closed: false }).populate('createdBy', 'name');
+
+  if (!openRedeems || openRedeems.length === 0) {
+    return false;
+  }
+
+  const itemsList = openRedeems
+    .map((r) => {
+      const name = r.createdBy?.name || 'Housemate';
+      const noteStr = r.note ? ` (${r.note})` : '';
+      return `• <b>${name}</b>: ₹${r.amount.toLocaleString('en-IN')}${noteStr} — <code>${r.upiId}</code>`;
+    })
+    .join('\n');
+
+  const text = `🤝 <b>Unpaid Redeem Requests Reminder</b>\n\n` +
+    `Hi <b>Ashwin</b>! 👋\n` +
+    `There ${openRedeems.length === 1 ? 'is 1 unpaid redeem request' : `are ${openRedeems.length} unpaid redeem requests`} pending settlement:\n\n` +
+    `${itemsList}\n\n` +
+    `Please kindly check when you get a moment, settle the payment(s) via UPI, and mark them closed on the portal! Thank you so much! ✨`;
+
+  return sendTelegramMessage(text);
+}
+
 module.exports = {
   getTelegramConfig,
   updateTelegramConfig,
   sendTelegramMessage,
   sendTestMessage,
   sendTomorrowChoresNotification,
-  sendRemainingMoneyNotification
+  sendRemainingMoneyNotification,
+  sendUnpaidRedeemReminder
 };

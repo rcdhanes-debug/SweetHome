@@ -28,6 +28,7 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/photos', express.json({ limit: '16mb' }), require('./routes/photoRoutes'));
 app.use('/api/photo', require('./routes/photoRoutes'));
+app.use('/api/push', require('./routes/pushRoutes'));
 
 // Serve the built client in production.
 const clientDist = path.join(__dirname, '..', 'client', 'dist');

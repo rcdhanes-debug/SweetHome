@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -24,6 +24,11 @@ export default function Expenses() {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const pageSize = 5;
+  const totalPages = Math.ceil(expenses.length / pageSize) || 1;
+  const paginatedExpenses = expenses.slice((page - 1) * pageSize, page * pageSize);
 
   const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
   const collected = funding?.totalCollected || 0;
@@ -121,11 +126,37 @@ export default function Expenses() {
           subtitle="Nothing recorded for this month. Add the first expense to get started."
         />
       ) : (
-        <div className="ledger">
-          {expenses.map((e) => (
-            <ExpenseItem key={e._id} expense={e} canEdit={true} onEdit={openEdit} onDelete={(x) => setDeleting(x)} />
-          ))}
-        </div>
+        <>
+          <div className="ledger">
+            {paginatedExpenses.map((e) => (
+              <ExpenseItem key={e._id} expense={e} canEdit={true} onEdit={openEdit} onDelete={(x) => setDeleting(x)} />
+            ))}
+          </div>
+
+          {expenses.length > pageSize && (
+            <div className="pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', gap: '12px' }}>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <span className="muted" style={{ fontSize: '13px', fontWeight: 600 }}>
+                Page {page} of {totalPages} ({expenses.length} total)
+              </span>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+              >
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <BottomSheet

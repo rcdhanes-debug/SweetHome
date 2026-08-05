@@ -18,6 +18,7 @@ import EmptyState from '../components/EmptyState';
 import BottomSheet from '../components/BottomSheet';
 import ConfirmModal from '../components/ConfirmModal';
 import Avatar from '../components/Avatar';
+import PushNotificationBanner from '../components/PushNotificationBanner';
 import { EVENT_META } from '../constants';
 import { formatCurrency, formatDate, todayDayName, deadlineInfo, todayISTDateString } from '../utils/format';
 
@@ -144,7 +145,7 @@ export default function Dashboard() {
   }, [reduced, loading.funding]);
 
   const pct = funding ? Math.round((funding.totalCollected / funding.targetAmount) * 100) : 0;
-  const recent = expenses.slice(0, 4);
+  const recent = expenses.slice(0, 3);
   const deadline = deadlineInfo();
   const upcoming = events
     .filter((e) => e.date >= todayISTDateString())
@@ -210,6 +211,7 @@ export default function Dashboard() {
 
   return (
     <div className="page">
+      <PushNotificationBanner />
       {loading.funding ? (
         <div className="stack">
           <Skeleton height={140} />
@@ -418,9 +420,9 @@ export default function Dashboard() {
                   <div key={e._id} className="mini-ledger__row">
                     <CategoryIcon category={e.category} size={16} />
                     <div className="mini-ledger__body">
-                      <div className="mini-ledger__cat">{e.category}</div>
+                      <div className="mini-ledger__cat">{e.description || e.category}</div>
                       <div className="mini-ledger__meta">
-                        {e.paidBy?.name} • {formatDate(e.expenseDate)}
+                        {e.description ? `${e.category} • ` : ''}{e.paidBy?.name} • {formatDate(e.expenseDate)}
                       </div>
                     </div>
                     <div className="mini-ledger__amt">{formatCurrency(e.amount)}</div>

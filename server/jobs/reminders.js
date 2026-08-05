@@ -72,6 +72,22 @@ function startReminderJobs() {
   );
   console.log(`[cron] Telegram 9:00 PM Tomorrow's Chores scheduled: daily 21:00 (${HOUSEHOLD_TZ}).`);
 
+  // Daily 8:00 PM (20:00 IST) Telegram alert for Unpaid Redeem Requests (messaging Ashwin politely)
+  cron.schedule(
+    '0 20 * * *',
+    async () => {
+      console.log('[cron] 8:00 PM Unpaid Redeem Telegram alert triggered.');
+      try {
+        const telegram = require('../services/telegramService');
+        await telegram.sendUnpaidRedeemReminder();
+      } catch (err) {
+        console.error('[cron] Unpaid Redeem Telegram alert failed:', err.message);
+      }
+    },
+    { timezone: HOUSEHOLD_TZ }
+  );
+  console.log(`[cron] Telegram 8:00 PM Unpaid Redeem alert scheduled: daily 20:00 (${HOUSEHOLD_TZ}).`);
+
   // Every 2 days at 10:00 AM IST Telegram alert for Remaining Money / Available Balance
   cron.schedule(
     '0 10 */2 * *',
@@ -87,6 +103,56 @@ function startReminderJobs() {
     { timezone: HOUSEHOLD_TZ }
   );
   console.log(`[cron] Telegram 2-day Remaining Money update scheduled: 10:00 AM every 2 days (${HOUSEHOLD_TZ}).`);
+
+  // --- Web Push Notifications ---
+
+  // Daily 8:00 PM (20:00 IST) — Push: Tomorrow's Cooking Duty
+  cron.schedule(
+    '0 20 * * *',
+    async () => {
+      console.log('[cron] 8:00 PM Tomorrow Cooking push triggered.');
+      try {
+        const push = require('../services/pushService');
+        await push.sendTomorrowCookingPush();
+      } catch (err) {
+        console.error('[cron] Tomorrow Cooking push failed:', err.message);
+      }
+    },
+    { timezone: HOUSEHOLD_TZ }
+  );
+  console.log(`[cron] Push 8:00 PM Tomorrow Cooking scheduled: daily 20:00 (${HOUSEHOLD_TZ}).`);
+
+  // 5th of every month at 9:00 AM — Push: Monthly Contribution Status
+  cron.schedule(
+    '0 9 5 * *',
+    async () => {
+      console.log('[cron] 5th-of-month Contribution Status push triggered.');
+      try {
+        const push = require('../services/pushService');
+        await push.sendContributionStatusPush();
+      } catch (err) {
+        console.error('[cron] Contribution Status push failed:', err.message);
+      }
+    },
+    { timezone: HOUSEHOLD_TZ }
+  );
+  console.log(`[cron] Push 5th-of-month Contribution Status scheduled: 09:00 on 5th (${HOUSEHOLD_TZ}).`);
+
+  // Every 2 days at 10:00 AM — Push: Remaining Balance
+  cron.schedule(
+    '0 10 */2 * *',
+    async () => {
+      console.log('[cron] 2-day Remaining Balance push triggered.');
+      try {
+        const push = require('../services/pushService');
+        await push.sendRemainingBalancePush();
+      } catch (err) {
+        console.error('[cron] Remaining Balance push failed:', err.message);
+      }
+    },
+    { timezone: HOUSEHOLD_TZ }
+  );
+  console.log(`[cron] Push 2-day Remaining Balance scheduled: 10:00 AM every 2 days (${HOUSEHOLD_TZ}).`);
 
   return job;
 }
