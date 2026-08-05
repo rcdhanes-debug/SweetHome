@@ -2,16 +2,13 @@ node_modules/
 dist/
 *.log
 
-# Environment variable files (ignored by Git for security)
+# Ignore all environment files completely
 .env
-.env.*
-!.env.example
-server/.env
-server/.env.*
-!server/.env.example
-client/.env
-client/.env.*
-!client/.env.example
+.env*
+*.env
+*.env.*
+server/.env*
+client/.env*
 
 .DS_Store
 coverage/
