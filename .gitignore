@@ -1,9 +1,18 @@
 node_modules/
 dist/
 *.log
+
+# Environment variable files (ignored by Git for security)
 .env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+client/.env
+client/.env.*
+!client/.env.example
+
 .DS_Store
 coverage/
-server/.env
-client/.env
 data/
