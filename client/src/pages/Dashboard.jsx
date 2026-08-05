@@ -430,33 +430,6 @@ export default function Dashboard() {
             )}
           </section>
 
-          <section className="card dash-members">
-            <div className="card__head">
-              <h3>
-                <Users size={16} /> Members
-              </h3>
-              <Link to="/members" className="link-btn">
-                Profiles <ArrowRight size={14} />
-              </Link>
-            </div>
-            {loading.users ? (
-              <Skeleton height={70} />
-            ) : (
-              <div className="member-strip">
-                {atHome.map((u) => (
-                  <Link key={u._id} to="/members" className="member-strip__item" title={u.name}>
-                    <Avatar user={u} name={u.name} size={42} />
-                  </Link>
-                ))}
-              </div>
-            )}
-            <div className="card__foot">
-              <span>
-                {awayCount > 0 ? `${awayCount} away` : 'Everyone is home'}
-              </span>
-            </div>
-          </section>
-
           <section className="card dash-upcoming">
             <div className="card__head">
               <h3>
