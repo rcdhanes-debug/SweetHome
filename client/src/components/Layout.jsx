@@ -15,9 +15,9 @@ const NAV = [
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/redeem', label: 'Redeem', icon: HandCoins },
   { to: '/chores', label: 'Schedule', icon: CalendarDays },
+  { to: '/noticeboard', label: 'Board', icon: ClipboardList },
   { to: '/calendar', label: 'Calendar', icon: CalendarClock },
-  { to: '/members', label: 'Members', icon: Users },
-  { to: '/noticeboard', label: 'Board', icon: ClipboardList }
+  { to: '/members', label: 'Members', icon: Users }
 ];
 
 const PARTICLES = Array.from({ length: 12 }, (_, i) => ({

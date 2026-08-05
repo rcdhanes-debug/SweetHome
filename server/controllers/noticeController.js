@@ -9,55 +9,61 @@ const getBoard = asyncHandler(async (req, res) => {
 
 // ─── Shopping list ──────────────────────────────────────────
 const addShopping = asyncHandler(async (req, res) => {
-  const item = await board.addShoppingItem({ text: req.body?.text, createdBy: req.user._id });
-  await audit.log({ action: 'SHOPPING_ADDED', performedBy: req.user._id, details: { text: item.text } });
+  const userId = req.user ? req.user._id : null;
+  const item = await board.addShoppingItem({ text: req.body?.text, createdBy: userId });
+  await audit.log({ action: 'SHOPPING_ADDED', performedBy: userId, details: { text: item.text } });
   res.status(201).json(item);
 });
 
 const updateShopping = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { text, checked } = req.body || {};
-  const item = await board.updateShoppingItem(id, { text, checked, performedBy: req.user._id });
+  const userId = req.user ? req.user._id : null;
+  const item = await board.updateShoppingItem(id, { text, checked, performedBy: userId });
   await audit.log({
     action: checked !== undefined ? 'SHOPPING_TOGGLED' : 'SHOPPING_EDITED',
-    performedBy: req.user._id,
+    performedBy: userId,
     details: { text: item.text, checked: item.checked }
   });
   res.json(item);
 });
 
 const deleteShopping = asyncHandler(async (req, res) => {
+  const userId = req.user ? req.user._id : null;
   const item = await board.deleteShoppingItem(req.params.id);
-  await audit.log({ action: 'SHOPPING_DELETED', performedBy: req.user._id, details: { text: item.text } });
+  await audit.log({ action: 'SHOPPING_DELETED', performedBy: userId, details: { text: item.text } });
   res.json({ message: 'Item removed.' });
 });
 
 // ─── Fix-It log ─────────────────────────────────────────────
 const addFix = asyncHandler(async (req, res) => {
+  const userId = req.user ? req.user._id : null;
   const ticket = await board.addFixTicket({
     title: req.body?.title,
     description: req.body?.description,
-    createdBy: req.user._id
+    createdBy: userId
   });
-  await audit.log({ action: 'FIX_OPENED', performedBy: req.user._id, details: { title: ticket.title } });
+  await audit.log({ action: 'FIX_OPENED', performedBy: userId, details: { title: ticket.title } });
   res.status(201).json(ticket);
 });
 
 const setFix = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { resolved } = req.body || {};
-  const ticket = await board.setFixResolved(id, { resolved, performedBy: req.user._id });
+  const userId = req.user ? req.user._id : null;
+  const ticket = await board.setFixResolved(id, { resolved, performedBy: userId });
   await audit.log({
     action: resolved ? 'FIX_RESOLVED' : 'FIX_REOPENED',
-    performedBy: req.user._id,
+    performedBy: userId,
     details: { title: ticket.title }
   });
   res.json(ticket);
 });
 
 const deleteFix = asyncHandler(async (req, res) => {
+  const userId = req.user ? req.user._id : null;
   const ticket = await board.deleteFixTicket(req.params.id);
-  await audit.log({ action: 'FIX_DELETED', performedBy: req.user._id, details: { title: ticket.title } });
+  await audit.log({ action: 'FIX_DELETED', performedBy: userId, details: { title: ticket.title } });
   res.json({ message: 'Issue removed.' });
 });
 

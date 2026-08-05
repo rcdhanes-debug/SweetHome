@@ -10,5 +10,5 @@ module.exports = {
   LOG_LEVEL: process.env.LOG_LEVEL || 'dev',
   AUTO_SEED: process.env.AUTO_SEED !== 'false',
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || '8826854405:AAEiAp1cYzpSWhH5xcuxSnoAUv64JA5tWIY',
-  TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID || '-5311138217'
+  TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID || '-1004345526052'
 };

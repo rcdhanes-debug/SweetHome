@@ -4,6 +4,10 @@ const { todayISTDateString } = require('../utils/time');
 
 async function getTelegramConfig() {
   let doc = await HouseSetting.findOne({ key: 'common_account' });
+  if (doc && doc.telegramChatId === '-5311138217') {
+    doc.telegramChatId = '-1004345526052';
+    try { await doc.save(); } catch (_) {}
+  }
   const token = doc?.telegramBotToken || TELEGRAM_BOT_TOKEN || '';
   const chatId = doc?.telegramChatId || TELEGRAM_CHAT_ID || '';
   const enabled = doc?.telegramEnabled !== false;

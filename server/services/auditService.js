@@ -49,17 +49,14 @@ async function log({ action, performedBy = null, targetUser = null, details = {}
       createdBy: performedBy
     });
 
-    // Send real-time group notification to Telegram
+    // Send Telegram notification ONLY for Balance and Chore updates
     try {
       const telegram = require('./telegramService');
-      const tgText = `<b>${title}</b>\n\n` +
-        `• <b>By</b>: ${actorName}\n` +
-        (details.amount ? `• <b>Amount</b>: ₹${details.amount}\n` : '') +
-        (details.category ? `• <b>Category</b>: ${details.category}\n` : '') +
-        (details.description ? `• <b>Details</b>: ${details.description}\n` : '') +
-        (details.aName && details.bName ? `• <b>Swap</b>: ${details.aName} ↔ ${details.bName}\n` : '');
-
-      telegram.sendTelegramMessage(tgText).catch(() => {});
+      if (['CONTRIBUTION_PAID', 'CONTRIBUTION_RESET', 'FUNDING_AMOUNT_SET', 'COMMON_ACCOUNT_UPDATED'].includes(action)) {
+        telegram.sendRemainingMoneyNotification().catch(() => {});
+      } else if (['CHORE_SWAP', 'CHORE_UPDATED'].includes(action)) {
+        telegram.sendTomorrowChoresNotification().catch(() => {});
+      }
     } catch (_) {}
   } catch (err) {
     console.error('Failed to write audit log/notification:', err.message);

@@ -6,6 +6,7 @@ const { seedAll } = require('./seed/seedData');
 const { startMonthlyJobs } = require('./jobs/monthlyReset');
 const { startReminderJobs } = require('./jobs/reminders');
 const { startKeepAlive } = require('./services/keepAliveService');
+const { startBotPolling } = require('./services/telegramBot');
 
 (async () => {
   await connectDB();
@@ -22,6 +23,7 @@ const { startKeepAlive } = require('./services/keepAliveService');
   startMonthlyJobs();
   startReminderJobs();
   startKeepAlive();
+  startBotPolling();
 
   app.listen(PORT, () => {
     console.log(`Sweet Home API listening on http://localhost:${PORT}`);

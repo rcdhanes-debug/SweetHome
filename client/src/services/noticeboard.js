@@ -4,14 +4,14 @@ const auth = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
 
 export const getBoard = () => api.get('/noticeboard');
 
-export const addShopping = (token, text) => api.post('/noticeboard/shopping', { text }, auth(token));
-export const toggleShopping = (token, id, checked) => api.patch(`/noticeboard/shopping/${id}`, { checked }, auth(token));
-export const editShopping = (token, id, text) => api.patch(`/noticeboard/shopping/${id}`, { text }, auth(token));
-export const deleteShopping = (token, id) => api.delete(`/noticeboard/shopping/${id}`, auth(token));
+export const addShopping = (text) => api.post('/noticeboard/shopping', { text });
+export const toggleShopping = (id, checked) => api.patch(`/noticeboard/shopping/${id}`, { checked });
+export const editShopping = (id, text) => api.patch(`/noticeboard/shopping/${id}`, { text });
+export const deleteShopping = (id) => api.delete(`/noticeboard/shopping/${id}`);
 
-export const addFix = (token, title, description) => api.post('/noticeboard/fixes', { title, description }, auth(token));
-export const setFix = (token, id, resolved) => api.patch(`/noticeboard/fixes/${id}`, { resolved }, auth(token));
-export const deleteFix = (token, id) => api.delete(`/noticeboard/fixes/${id}`, auth(token));
+export const addFix = (title, description) => api.post('/noticeboard/fixes', { title, description });
+export const setFix = (id, resolved) => api.patch(`/noticeboard/fixes/${id}`, { resolved });
+export const deleteFix = (id) => api.delete(`/noticeboard/fixes/${id}`);
 
 export const addGuest = (token, data) => api.post('/noticeboard/guests', data, auth(token));
 export const deleteGuest = (token, id) => api.delete(`/noticeboard/guests/${id}`, auth(token));

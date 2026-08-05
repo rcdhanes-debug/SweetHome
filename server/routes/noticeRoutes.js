@@ -20,14 +20,14 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 router.get('/', getBoard);
 
 // Shared shopping list
-router.post('/shopping', requireAuth, addShopping);
-router.patch('/shopping/:id', requireAuth, updateShopping);
-router.delete('/shopping/:id', requireAuth, deleteShopping);
+router.post('/shopping', addShopping);
+router.patch('/shopping/:id', updateShopping);
+router.delete('/shopping/:id', deleteShopping);
 
 // Fix-It log
-router.post('/fixes', requireAuth, addFix);
-router.patch('/fixes/:id', requireAuth, setFix);
-router.delete('/fixes/:id', requireAuth, deleteFix);
+router.post('/fixes', addFix);
+router.patch('/fixes/:id', setFix);
+router.delete('/fixes/:id', deleteFix);
 
 // Guest protocol
 router.post('/guests', requireAuth, addGuest);
