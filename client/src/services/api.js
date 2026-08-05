@@ -10,12 +10,15 @@ export function resolveMediaUrl(path) {
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
     return path;
   }
-  const apiBase = import.meta.env.VITE_API_URL || '/api';
-  if (apiBase.startsWith('http://') || apiBase.startsWith('https://')) {
-    try {
-      const origin = new URL(apiBase).origin;
-      return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
-    } catch (_) {}
+  if (path.startsWith('/api/') || path.startsWith('api/') || path.startsWith('/uploads/') || path.startsWith('/photos/')) {
+    const apiBase = import.meta.env.VITE_API_URL || '/api';
+    if (apiBase.startsWith('http://') || apiBase.startsWith('https://')) {
+      try {
+        const origin = new URL(apiBase).origin;
+        const cleanPath = path.startsWith('/') ? path : `/${path}`;
+        return `${origin}${cleanPath}`;
+      } catch (_) {}
+    }
   }
   return path;
 }

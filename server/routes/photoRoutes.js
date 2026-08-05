@@ -24,7 +24,7 @@ const router = express.Router();
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const photos = await Photo.find().select('_id originalName mime size createdAt').sort({ createdAt: -1 });
+    const photos = await Photo.find().select('_id originalName mime size createdAt data').sort({ createdAt: -1 });
     res.json(
       photos.map((p) => ({
         _id: p._id,
@@ -32,7 +32,7 @@ router.get(
         mime: p.mime,
         size: p.size,
         uploadedAt: p.createdAt,
-        src: `/api/photos/${p._id}/file`
+        src: p.data || `/api/photos/${p._id}/file`
       }))
     );
   })
@@ -70,7 +70,7 @@ router.post(
       details: { photoId: photo._id, bytes: buffer.length }
     });
 
-    res.status(201).json({ _id: photo._id, name: photo.originalName, src: `/api/photos/${photo._id}/file` });
+    res.status(201).json({ _id: photo._id, name: photo.originalName, src: photo.data || `/api/photos/${photo._id}/file` });
   })
 );
 

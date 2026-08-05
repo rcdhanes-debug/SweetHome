@@ -320,7 +320,7 @@ export default function Dashboard() {
                 title="Tap to view full QR code"
               >
                 <img
-                  src={commonQr}
+                  src={resolveMediaUrl(commonQr)}
                   alt="Sweet Home UPI QR Code"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
@@ -581,7 +581,7 @@ export default function Dashboard() {
       <BottomSheet open={qrModal} onClose={() => setQrModal(false)} title="Sweet Home Common Account QR">
         <div style={{ textAlign: 'center', padding: '10px 0' }}>
           <img
-            src={commonQr}
+            src={resolveMediaUrl(commonQr)}
             alt="Sweet Home Common Account QR"
             style={{ maxWidth: '280px', width: '100%', height: 'auto', borderRadius: '16px', border: '1px solid var(--border)' }}
           />
@@ -627,7 +627,7 @@ export default function Dashboard() {
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '6px' }}>
           <img
-            src={editQrImage || commonQr}
+            src={resolveMediaUrl(editQrImage || commonQr)}
             alt="QR Code Preview"
             style={{ width: '80px', height: '80px', borderRadius: '12px', border: '1px solid var(--border)', objectFit: 'cover' }}
           />
