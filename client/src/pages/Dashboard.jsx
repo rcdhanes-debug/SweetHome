@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import * as photoApi from '../services/photo';
 import * as fundingApi from '../services/funding';
+import { resolveMediaUrl } from '../services/api';
 import ProgressBar from '../components/ProgressBar';
 import CountUp from '../components/CountUp';
 import Skeleton from '../components/Skeleton';
@@ -510,7 +511,7 @@ export default function Dashboard() {
               <div className="photo-grid">
                 {photos.map((p) => (
                   <div key={p._id} className="photo-tile" onClick={() => setViewer(p)}>
-                    <img src={p.src} alt={p.name || 'Memory'} loading="lazy" />
+                    <img src={resolveMediaUrl(p.src)} alt={p.name || 'Memory'} loading="lazy" />
                     {isAdmin && (
                       <button
                         type="button"
@@ -535,7 +536,7 @@ export default function Dashboard() {
 
       <BottomSheet open={Boolean(viewer)} onClose={() => setViewer(null)} title={viewer?.name || 'Memory'}>
         <div className="photo-viewer">
-          <img src={viewer?.src} alt={viewer?.name || 'Memory'} />
+          <img src={resolveMediaUrl(viewer?.src)} alt={viewer?.name || 'Memory'} />
         </div>
         {viewer && (
           <p className="muted sheet-subtitle">Added {formatDate(viewer.uploadedAt)}</p>

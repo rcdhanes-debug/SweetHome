@@ -1,8 +1,9 @@
 import { initials } from '../utils/format';
+import { resolveMediaUrl } from '../services/api';
 
 export default function Avatar({ user, name, size = 38 }) {
   const displayName = name || user?.name || '';
-  const src = user?.avatar;
+  const src = resolveMediaUrl(user?.avatar);
 
   return (
     <span

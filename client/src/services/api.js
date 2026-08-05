@@ -5,6 +5,21 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 });
 
+export function resolveMediaUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  const apiBase = import.meta.env.VITE_API_URL || '/api';
+  if (apiBase.startsWith('http://') || apiBase.startsWith('https://')) {
+    try {
+      const origin = new URL(apiBase).origin;
+      return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+    } catch (_) {}
+  }
+  return path;
+}
+
 api.interceptors.request.use((config) => {
   if (config.headers.Authorization) return config;
   const raw = localStorage.getItem('homehq_session');

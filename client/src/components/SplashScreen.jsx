@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import { resolveMediaUrl } from '../services/api';
 
-export const PHOTO_SRC = '/api/photo/file';
+export const PHOTO_SRC = resolveMediaUrl('/api/photo/file');
 
 export default function SplashScreen({ exiting }) {
   const reduced = useReducedMotion();
