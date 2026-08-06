@@ -359,10 +359,10 @@ export default function Dashboard() {
                 <Users size={18} className="muted-icon" />
               </div>
               <div className="big-number">
-                <CountUp value={funding.paidCount} />/{funding.paidCount + funding.pendingCount}
+                <CountUp value={funding.paidCount} />/{funding.payments?.length || (funding.paidCount + funding.pendingCount)}
               </div>
               <p className="muted">
-                <CountUp value={funding.pendingCount} /> pending • ₹{funding.contributionAmount.toLocaleString('en-IN')} each
+                <CountUp value={funding.pendingCount} /> pending {funding.partialCount > 0 ? `(${funding.partialCount} partial)` : ''} • ₹{funding.contributionAmount.toLocaleString('en-IN')} each
               </p>
               <Link to="/collection" className="link-btn">
                 View payments <ChevronRight size={14} />

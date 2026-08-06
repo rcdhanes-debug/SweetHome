@@ -187,7 +187,7 @@ export default function Collection() {
         <div className="fund-hero__foot">
           <span className="fund-hero__pct">{pct}% Collected</span>
           <span className="fund-hero__count">
-            {funding.paidCount} / {funding.paidCount + funding.pendingCount} paid
+            {funding.paidCount} / {funding.payments.length} paid {funding.partialCount > 0 ? `(${funding.partialCount} partial)` : ''}
           </span>
         </div>
         <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--amber)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -289,9 +289,9 @@ export default function Collection() {
       <AmountModal
         open={Boolean(payTarget)}
         users={users}
-        title="Confirm Contribution"
-        subtitle={payTarget ? `${payTarget.payment.user.name} • Payment received` : undefined}
-        defaultAmount={payTarget?.payment.amount}
+        title={payTarget?.payment.status === 'partial' ? 'Add Partial Payment' : 'Confirm Contribution'}
+        subtitle={payTarget ? `${payTarget.payment.user.name} • ${payTarget.payment.dueAmount ? `Remaining due: ₹${formatCurrency(payTarget.payment.dueAmount)}` : 'Payment received'}` : undefined}
+        defaultAmount={payTarget?.payment.dueAmount ?? (funding.contributionAmount - (payTarget?.payment.amount || 0))}
         defaultUser={payTarget?.payment.user._id}
         onConfirm={confirmPayAmount}
         onCancel={() => setPayTarget(null)}

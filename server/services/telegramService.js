@@ -109,12 +109,16 @@ async function sendRemainingMoneyNotification() {
   const fundingService = require('./fundingService');
   const summary = await fundingService.getCurrentSummary();
 
+  const pendingText = summary.partialCount > 0
+    ? `⏳ <i>${summary.pendingCount} unpaid, ${summary.partialCount} partial payment(s)</i>`
+    : (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All 9 housemates paid!</i>`);
+
   const text = `💰 <b>Remaining Household Balance Update</b> (${summary.monthLabel})\n\n` +
     `✨ <b>Carried Over Rollover</b>: ₹${summary.rolloverBalance.toLocaleString('en-IN')}\n` +
-    `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/9 Paid)\n` +
+    `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/9 Fully Paid)\n` +
     `💸 <b>Total Spent</b>: ₹${summary.totalSpent.toLocaleString('en-IN')}\n\n` +
     `💳 <b>Available Remaining Money</b>: <b>₹${summary.balance.toLocaleString('en-IN')}</b>\n\n` +
-    (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All 9 housemates paid!</i>`);
+    pendingText;
 
   return sendTelegramMessage(text);
 }

@@ -33,12 +33,16 @@ async function handleCommand(msg, token) {
 
   if (command === '/getbalance' || command === '/balance') {
     const summary = await fundingService.getCurrentSummary();
+    const pendingText = summary.partialCount > 0
+      ? `⏳ <i>${summary.pendingCount} unpaid, ${summary.partialCount} partial payment(s)</i>`
+      : (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All 9 housemates paid!</i>`);
+
     const reply = `💰 <b>Sweet Home Household Balance</b> (${summary.monthLabel})\n\n` +
       `✨ <b>Rollover</b>: ₹${(summary.rolloverBalance || 0).toLocaleString('en-IN')}\n` +
-      `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/9 Paid)\n` +
+      `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/9 Fully Paid)\n` +
       `💸 <b>Total Spent</b>: ₹${summary.totalSpent.toLocaleString('en-IN')}\n\n` +
       `💳 <b>Available Balance</b>: <b>₹${summary.balance.toLocaleString('en-IN')}</b>\n\n` +
-      (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All 9 housemates paid!</i>`);
+      pendingText;
     return replyTelegram(token, chatId, reply);
   }
 
@@ -78,13 +82,20 @@ async function handleCommand(msg, token) {
     return replyTelegram(token, chatId, reply);
   }
 
-  if (command === '/pending') {
     const summary = await fundingService.getCurrentSummary();
-    const pendingList = summary.payments.filter((p) => !p.paid).map((p) => `• ${p.user?.name || 'Member'}`).join('\n');
+    const pendingItems = summary.payments
+      .filter((p) => p.status !== 'paid')
+      .map((p) => {
+        if (p.status === 'partial') {
+          return `• <b>${p.user?.name || 'Member'}</b>: ₹${p.amount.toLocaleString('en-IN')} paid (<b>₹${(p.dueAmount || 0).toLocaleString('en-IN')} due</b>)`;
+        }
+        return `• <b>${p.user?.name || 'Member'}</b>: Unpaid (<b>₹${summary.contributionAmount.toLocaleString('en-IN')} due</b>)`;
+      })
+      .join('\n');
+
     const reply = `⏳ <b>Pending Monthly Contributions (${summary.monthLabel})</b>\n\n` +
-      (pendingList ? pendingList + `\n\nContribution: ₹${summary.contributionAmount.toLocaleString('en-IN')} each` : `🎉 All housemates have paid for ${summary.monthLabel}!`);
+      (pendingItems ? pendingItems + `\n\nTarget: ₹${summary.contributionAmount.toLocaleString('en-IN')} each` : `🎉 All housemates have paid for ${summary.monthLabel}!`);
     return replyTelegram(token, chatId, reply);
-  }
 
   if (command === '/redeem') {
     const Redeem = require('../models/Redeem');

@@ -73,7 +73,7 @@ async function createCycle(month) {
     return {
       user: u._id,
       paid: false,
-      amount: contributionAmount,
+      amount: 0,
       paidAt: null,
       recordedBy: null
     };
@@ -110,7 +110,7 @@ async function calculateAutoRollover(currentMonthKey) {
       { $match: { expenseDate: { $gte: pcRange.start, $lt: pcRange.end } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    const pcCollected = pc.payments.filter((p) => p.paid).reduce((s, p) => s + p.amount, 0);
+    const pcCollected = pc.payments.reduce((s, p) => s + (p.amount || 0), 0);
     const pcSpent = pcSpentAgg[0]?.total || 0;
     const pcNet = pcCollected - pcSpent;
     if (pcNet > 0) totalRollover += pcNet;
@@ -140,18 +140,38 @@ async function getCurrentSummary() {
     rolloverBalance = await calculateAutoRollover(cycle.month);
   }
 
-  const payments = populated.payments.map((p) => ({
-    user: p.user ? { _id: p.user._id, name: p.user.name, role: p.user.role } : null,
-    paid: p.paid,
-    amount: p.amount,
-    paidAt: p.paidAt,
-    recordedBy: p.recordedBy ? { _id: p.recordedBy._id, name: p.recordedBy.name } : null
-  }));
+  const payments = populated.payments.map((p) => {
+    let paidAmt = 0;
+    if (p.paid) {
+      paidAmt = p.amount || cycle.contributionAmount;
+    } else if (p.amount > 0 && p.amount < cycle.contributionAmount) {
+      paidAmt = p.amount;
+    } else {
+      paidAmt = 0;
+    }
 
-  const paidCount = payments.filter((p) => p.paid).length;
-  const pendingCount = payments.filter((p) => !p.paid).length;
-  const totalCollected = payments.filter((p) => p.paid).reduce((s, p) => s + p.amount, 0);
-  const targetTotal = payments.reduce((s, p) => s + (p.amount || 0), 0);
+    const isPaid = p.paid || paidAmt >= cycle.contributionAmount;
+    const isPartial = !isPaid && paidAmt > 0;
+    const dueAmount = Math.max(0, cycle.contributionAmount - paidAmt);
+    const status = isPaid ? 'paid' : (isPartial ? 'partial' : 'pending');
+
+    return {
+      user: p.user ? { _id: p.user._id, name: p.user.name, role: p.user.role } : null,
+      paid: isPaid,
+      amount: paidAmt,
+      targetAmount: cycle.contributionAmount,
+      dueAmount,
+      status,
+      paidAt: p.paidAt,
+      recordedBy: p.recordedBy ? { _id: p.recordedBy._id, name: p.recordedBy.name } : null
+    };
+  });
+
+  const paidCount = payments.filter((p) => p.status === 'paid').length;
+  const partialCount = payments.filter((p) => p.status === 'partial').length;
+  const pendingCount = payments.filter((p) => p.status === 'pending').length;
+  const totalCollected = payments.reduce((s, p) => s + (p.amount || 0), 0);
+  const targetTotal = payments.length * cycle.contributionAmount;
   const commonAccount = await getCommonAccount();
 
   return {
@@ -165,6 +185,7 @@ async function getCurrentSummary() {
     isCustomRollover,
     balance: rolloverBalance + totalCollected - totalSpent,
     paidCount,
+    partialCount,
     pendingCount,
     deadline: { day: PAYMENT_DEADLINE_DAY, ...deadlineInfo(PAYMENT_DEADLINE_DAY) },
     commonAccount,
@@ -181,22 +202,35 @@ async function markPaid({ userId, performedBy, amount }) {
   const cycle = await currentCycle();
   const payment = cycle.payments.find((p) => String(p.user) === String(userId));
   if (!payment) throw new AppError('User is not part of this month\'s collection.', 404);
-  if (payment.paid) throw new AppError('This contribution is already marked as paid.', 409);
 
-  let paidAmount = cycle.contributionAmount;
+  let currentAmt = 0;
+  if (payment.paid) {
+    currentAmt = payment.amount || cycle.contributionAmount;
+  } else if (payment.amount > 0 && payment.amount < cycle.contributionAmount) {
+    currentAmt = payment.amount;
+  } else {
+    currentAmt = 0;
+  }
+
+  if (payment.paid || currentAmt >= cycle.contributionAmount) {
+    throw new AppError('This contribution is already fully paid.', 409);
+  }
+
+  let addAmount = cycle.contributionAmount - currentAmt;
   if (amount !== undefined && amount !== null) {
     const n = Number(amount);
     if (!Number.isFinite(n) || n <= 0 || n > 100000000) {
       throw new AppError('Payment amount must be a positive number.', 400);
     }
-    paidAmount = Math.round(n * 100) / 100;
+    addAmount = Math.round(n * 100) / 100;
   }
 
-  payment.paid = true;
+  const newTotal = currentAmt + addAmount;
+  payment.amount = newTotal;
+  payment.paid = newTotal >= cycle.contributionAmount;
   payment.paidAt = new Date();
-  payment.amount = paidAmount;
   payment.recordedBy = performedBy;
-  recomputeTotal(cycle);
+
   await cycle.save();
   return getCurrentSummary();
 }
@@ -212,10 +246,11 @@ async function setPaymentStatus({ userId, paid, paidAt, performedBy }) {
     payment.amount = cycle.contributionAmount;
     payment.recordedBy = performedBy;
   } else {
+    payment.paid = false;
+    payment.amount = 0;
     payment.paidAt = null;
     payment.recordedBy = null;
   }
-  recomputeTotal(cycle);
   await cycle.save();
   return getCurrentSummary();
 }
@@ -224,10 +259,10 @@ async function resetMonth(month = monthKey()) {
   const cycle = await ensureCycle(month);
   for (const p of cycle.payments) {
     p.paid = false;
+    p.amount = 0;
     p.paidAt = null;
     p.recordedBy = null;
   }
-  recomputeTotal(cycle);
   await cycle.save();
   return getCurrentSummary();
 }

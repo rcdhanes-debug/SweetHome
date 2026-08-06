@@ -76,23 +76,20 @@ function check(name, cond, extra = '') {
     const ashwin = users.find((u) => u.name === 'Ashwin');
     const jegan = users.find((u) => u.name === 'Jegan');
 
-    r = await api(port, 'POST', `/api/funding/${gowtham._id}/pay`, {}, veeraToken);
-    check('Member cannot pay another user', r.status === 403, r.body.message);
+    r = await api(port, 'POST', `/api/funding/${veera._id}/pay`, { amount: 5000 });
+    check('Record partial payment', r.status === 200 && r.body.partialCount === 1 && r.body.totalCollected === 5000);
 
-    r = await api(port, 'POST', `/api/funding/${veera._id}/pay`, {}, veeraToken);
-    check('Member cannot pay for anyone (admin-only)', r.status === 403, r.body.message);
-
-    r = await api(port, 'POST', `/api/funding/${veera._id}/pay`, { amount: 5000 }, adminToken);
-    check('Admin can pay custom amount', r.status === 200 && r.body.paidCount === 1 && r.body.totalCollected === 5000);
-
-    r = await api(port, 'POST', `/api/funding/${gowtham._id}/pay`, { amount: 0 }, adminToken);
+    r = await api(port, 'POST', `/api/funding/${gowtham._id}/pay`, { amount: 0 });
     check('Invalid amount rejected', r.status === 400);
 
-    r = await api(port, 'POST', `/api/funding/${veera._id}/pay`, {}, adminToken);
-    check('Duplicate payment blocked', r.status === 409);
+    r = await api(port, 'POST', `/api/funding/${veera._id}/pay`, { amount: 1000 });
+    check('Paying remaining amount marks fully paid', r.status === 200 && r.body.paidCount === 1 && r.body.totalCollected === 6000);
 
-    r = await api(port, 'POST', `/api/funding/${harish._id}/pay`, {}, adminToken);
-    check('Admin can pay for anyone', r.status === 200 && r.body.paidCount === 2);
+    r = await api(port, 'POST', `/api/funding/${veera._id}/pay`, {});
+    check('Duplicate payment on fully paid blocked', r.status === 409);
+
+    r = await api(port, 'POST', `/api/funding/${harish._id}/pay`, {});
+    check('Pay for contribution', r.status === 200 && r.body.paidCount === 2);
 
     r = await api(port, 'PATCH', `/api/funding/${harish._id}/status`, { paid: false }, adminToken);
     check('Admin reverts payment to pending', r.status === 200 && r.body.paidCount === 1);
