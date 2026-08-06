@@ -346,7 +346,7 @@ export default function Dashboard() {
                     className="btn btn--primary btn--sm"
                     style={{ textDecoration: 'none', gap: '4px' }}
                   >
-                    <Copy size={13} /> {copiedUpi ? 'Copied!' : 'Copy & Pay'}
+                    <Smartphone size={13} /> Copy & Pay
                   </a>
                 </div>
               </div>
@@ -576,7 +576,7 @@ export default function Dashboard() {
               className="btn btn--primary"
               style={{ textDecoration: 'none' }}
             >
-              <Copy size={15} /> {copiedUpi ? 'Copied!' : 'Copy & Pay'}
+              <Smartphone size={15} /> Copy & Pay
             </a>
           </div>
         </div>

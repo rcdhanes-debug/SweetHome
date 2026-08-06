@@ -4,8 +4,8 @@ import { formatCurrency, formatDate, formatTime } from '../utils/format';
 
 export default function PaymentCard({ payment, isAdmin, onMarkPaid, onTogglePending, busy }) {
   const { user, paid, amount, targetAmount = 6000, dueAmount, status, paidAt, recordedBy } = payment;
-  const isPartial = status === 'partial' || (!paid && amount > 0);
-  const isPaid = paid || status === 'paid';
+  const isPaid = status === 'paid' || (amount >= targetAmount);
+  const isPartial = status === 'partial' || (!isPaid && amount > 0 && amount < targetAmount);
   const remaining = dueAmount ?? Math.max(0, targetAmount - (amount || 0));
 
   return (
