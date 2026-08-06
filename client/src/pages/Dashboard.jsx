@@ -341,12 +341,12 @@ export default function Dashboard() {
                 </div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <a
-                    href="tez://"
+                    href="intent://pay#Intent;scheme=upi;end"
                     onClick={copyAndOpenGPay}
                     className="btn btn--primary btn--sm"
                     style={{ textDecoration: 'none', gap: '4px' }}
                   >
-                    <Copy size={13} /> {copiedUpi ? 'Copied!' : 'Copy & Open GPay'}
+                    <Copy size={13} /> {copiedUpi ? 'Copied!' : 'Copy & Pay'}
                   </a>
                 </div>
               </div>
@@ -571,12 +571,12 @@ export default function Dashboard() {
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
             <a
-              href="tez://"
+              href="intent://pay#Intent;scheme=upi;end"
               onClick={copyAndOpenGPay}
               className="btn btn--primary"
               style={{ textDecoration: 'none' }}
             >
-              <Copy size={15} /> {copiedUpi ? 'Copied!' : 'Copy & Open GPay'}
+              <Copy size={15} /> {copiedUpi ? 'Copied!' : 'Copy & Pay'}
             </a>
           </div>
         </div>

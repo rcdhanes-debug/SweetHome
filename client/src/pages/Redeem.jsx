@@ -218,7 +218,7 @@ export default function Redeem() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', flexShrink: 0 }}>
                 <a
-                  href="tez://"
+                  href="intent://pay#Intent;scheme=upi;end"
                   onClick={() => handleCopyAndPay(r.upiId, r.amount)}
                   className="btn btn--primary btn--sm"
                   style={{ textDecoration: 'none', gap: '5px' }}
