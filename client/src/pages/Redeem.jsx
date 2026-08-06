@@ -37,9 +37,6 @@ export default function Redeem() {
   const handleCopyAndPay = (upiId, amount) => {
     navigator.clipboard.writeText(upiId);
     toast.show(`✓ UPI Copied! Amount: ₹${amount}`);
-    if (/Android/i.test(navigator.userAgent)) {
-      window.location.href = 'intent://#Intent;scheme=tez;package=com.google.android.apps.nbu.paisa.user;end';
-    }
   };
 
   const handleOpenForm = () => {
@@ -220,15 +217,15 @@ export default function Redeem() {
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', flexShrink: 0 }}>
-                <button
-                  type="button"
+                <a
+                  href="tez://"
                   onClick={() => handleCopyAndPay(r.upiId, r.amount)}
                   className="btn btn--primary btn--sm"
-                  style={{ gap: '5px' }}
+                  style={{ textDecoration: 'none', gap: '5px' }}
                   title={`Pay ₹${r.amount} to ${r.upiId}`}
                 >
                   <Smartphone size={13} /> Copy & Pay
-                </button>
+                </a>
                 <button
                   type="button"
                   className="btn btn--ghost btn--sm"

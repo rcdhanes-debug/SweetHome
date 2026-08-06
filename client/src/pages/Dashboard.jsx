@@ -62,9 +62,6 @@ export default function Dashboard() {
     setCopiedUpi(true);
     toast.show('✓ Copied! Paste this in GPay');
     setTimeout(() => setCopiedUpi(false), 2000);
-    if (/Android/i.test(navigator.userAgent)) {
-      window.location.href = 'intent://#Intent;scheme=tez;package=com.google.android.apps.nbu.paisa.user;end';
-    }
   };
 
   const openEditAccount = () => {
@@ -343,9 +340,14 @@ export default function Dashboard() {
                   {commonUpi}
                 </div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <button type="button" className="btn btn--primary btn--sm" onClick={copyAndOpenGPay} style={{ gap: '4px' }}>
+                  <a
+                    href="tez://"
+                    onClick={copyAndOpenGPay}
+                    className="btn btn--primary btn--sm"
+                    style={{ textDecoration: 'none', gap: '4px' }}
+                  >
                     <Copy size={13} /> {copiedUpi ? 'Copied!' : 'Copy & Open GPay'}
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>
@@ -568,9 +570,14 @@ export default function Dashboard() {
             Scan using GPay, PhonePe, Paytm, or any UPI app to transfer funds directly to the house account.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-            <button type="button" className="btn btn--primary" onClick={copyAndOpenGPay}>
+            <a
+              href="tez://"
+              onClick={copyAndOpenGPay}
+              className="btn btn--primary"
+              style={{ textDecoration: 'none' }}
+            >
               <Copy size={15} /> {copiedUpi ? 'Copied!' : 'Copy & Open GPay'}
-            </button>
+            </a>
           </div>
         </div>
       </BottomSheet>
