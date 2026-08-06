@@ -113,7 +113,16 @@ export default function Admin() {
       loadTelegram();
       loadPushSubscribers();
     }
-  }, [isAdmin, loadLogs, loadTelegram, loadPushSubscribers]);
+  }, [isAdmin, session, loadLogs, loadTelegram, loadPushSubscribers]);
+
+  useEffect(() => {
+    if (isAdmin && activeTab === 'telegram') {
+      loadTelegram();
+    }
+    if (isAdmin && activeTab === 'push') {
+      loadPushSubscribers();
+    }
+  }, [activeTab, isAdmin, loadTelegram, loadPushSubscribers]);
 
   const saveTelegram = async () => {
     setTgSaving(true);
@@ -253,6 +262,8 @@ export default function Admin() {
       await requestIdentity({ title: 'Enter Admin Mode', subtitle: 'Select an admin account and enter your PIN', adminOnly: true });
       toast.show('🛡 Admin mode unlocked');
       loadLogs();
+      loadTelegram();
+      loadPushSubscribers();
     } catch (err) {
       if (err.message !== 'Cancelled') toast.show(err.message, 'error');
     }
@@ -369,7 +380,7 @@ export default function Admin() {
         </button>
       </div>
 
-      <div className="chip-row" style={{ marginTop: '6px' }}>
+      <div className="chip-row" style={{ marginTop: '6px', overflowX: 'auto', display: 'flex', gap: '8px', paddingBottom: '6px', WebkitOverflowScrolling: 'touch' }}>
         <button
           type="button"
           className={`chip ${activeTab === 'all' ? 'chip--active' : ''}`}

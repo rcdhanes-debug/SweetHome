@@ -17,6 +17,8 @@ import Dues from './pages/Dues';
 import Print from './pages/Print';
 import Admin from './pages/Admin';
 
+import UpdateBanner from './components/UpdateBanner';
+
 const INTRO_KEY = 'homehq_intro_seen';
 
 function readIntro() {
@@ -53,6 +55,7 @@ export default function App() {
 
   const app = (
     <ToastProvider>
+      <UpdateBanner />
       <AppProvider>
         <AuthProvider>
           <BrowserRouter>
