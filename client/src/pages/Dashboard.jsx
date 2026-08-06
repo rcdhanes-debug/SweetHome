@@ -64,7 +64,7 @@ export default function Dashboard() {
     setTimeout(() => setCopiedUpi(false), 2000);
     if (/Android/i.test(navigator.userAgent)) {
       setTimeout(() => {
-        window.location.href = 'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.google.android.apps.nbu.paisa.user;end';
+        window.location.href = 'tez://';
       }, 500);
     }
   };
