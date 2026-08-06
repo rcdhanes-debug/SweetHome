@@ -110,7 +110,14 @@ async function calculateAutoRollover(currentMonthKey) {
       { $match: { expenseDate: { $gte: pcRange.start, $lt: pcRange.end } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    const pcCollected = pc.payments.reduce((s, p) => s + (p.amount || 0), 0);
+    let pcCollected = 0;
+    for (const p of pc.payments) {
+      if (p.paid) {
+        pcCollected += (p.amount || pc.contributionAmount);
+      } else if (p.amount > 0 && p.amount < pc.contributionAmount) {
+        pcCollected += p.amount;
+      }
+    }
     const pcSpent = pcSpentAgg[0]?.total || 0;
     const pcNet = pcCollected - pcSpent;
     if (pcNet > 0) totalRollover += pcNet;
@@ -271,21 +278,31 @@ async function listHistory() {
   const cycles = await FundingCycle.find()
     .sort({ month: -1 })
     .populate('payments.user', 'name');
-  return cycles.map((c) => ({
-    month: c.month,
-    monthLabel: monthLabel(c.month),
-    targetAmount: c.payments.reduce((s, p) => s + (p.amount || 0), 0),
-    contributionAmount: c.contributionAmount,
-    totalCollected: c.payments.filter((p) => p.paid).reduce((s, p) => s + p.amount, 0),
-    paidCount: c.payments.filter((p) => p.paid).length,
-    pendingCount: c.payments.filter((p) => !p.paid).length,
-    payments: c.payments.map((p) => ({
-      user: p.user ? { _id: p.user._id, name: p.user.name } : null,
-      paid: p.paid,
-      amount: p.amount,
-      paidAt: p.paidAt
-    }))
-  }));
+  return cycles.map((c) => {
+    let collected = 0;
+    for (const p of c.payments) {
+      if (p.paid) {
+        collected += (p.amount || c.contributionAmount);
+      } else if (p.amount > 0 && p.amount < c.contributionAmount) {
+        collected += p.amount;
+      }
+    }
+    return {
+      month: c.month,
+      monthLabel: monthLabel(c.month),
+      targetAmount: c.payments.length * c.contributionAmount,
+      contributionAmount: c.contributionAmount,
+      totalCollected: collected,
+      paidCount: c.payments.filter((p) => p.paid || (p.amount >= c.contributionAmount)).length,
+      pendingCount: c.payments.filter((p) => !p.paid && (!p.amount || p.amount === c.contributionAmount)).length,
+      payments: c.payments.map((p) => ({
+        user: p.user ? { _id: p.user._id, name: p.user.name } : null,
+        paid: p.paid || (p.amount >= c.contributionAmount),
+        amount: p.paid ? (p.amount || c.contributionAmount) : (p.amount > 0 && p.amount < c.contributionAmount ? p.amount : 0),
+        paidAt: p.paidAt
+      }))
+    };
+  });
 }
 
 async function getReport(month = monthKey()) {

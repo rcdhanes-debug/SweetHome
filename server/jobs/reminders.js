@@ -23,9 +23,11 @@ async function runReminderChecks() {
   if (todayDay >= PAYMENT_DEADLINE_DAY) {
     const month = `${p.year}-${p.month}`;
     const summary = await funding.getCurrentSummary();
-    const pending = summary.payments.filter((pay) => !pay.paid);
-    if (pending.length > 0) {
-      await notifications.upsertContributionDue(month, pending.map((pay) => pay.user?.name || 'Member'));
+    const pendingNames = summary.payments
+      .filter((pay) => pay.status !== 'paid')
+      .map((pay) => pay.status === 'partial' ? `${pay.user?.name} (₹${pay.dueAmount} due)` : `${pay.user?.name} (Unpaid)`);
+    if (pendingNames.length > 0) {
+      await notifications.upsertContributionDue(month, pendingNames);
     } else {
       await notifications.resolveContributionDue(month);
     }

@@ -78,12 +78,19 @@ async function sendContributionStatusPush() {
   const fundingService = require('../services/fundingService');
   const summary = await fundingService.getCurrentSummary();
 
-  const paid = summary.payments.filter((p) => p.paid).map((p) => p.user?.name).filter(Boolean);
-  const pending = summary.payments.filter((p) => !p.paid).map((p) => p.user?.name).filter(Boolean);
+  const paid = summary.payments.filter((p) => p.status === 'paid').map((p) => p.user?.name).filter(Boolean);
+  const partial = summary.payments.filter((p) => p.status === 'partial').map((p) => `${p.user?.name} (₹${p.dueAmount} due)`).filter(Boolean);
+  const pending = summary.payments.filter((p) => p.status === 'pending').map((p) => p.user?.name).filter(Boolean);
 
-  const body = pending.length === 0
-    ? `🎉 All ${paid.length} housemates have paid for ${summary.monthLabel}!`
-    : `✅ ${paid.length} paid • ⏳ ${pending.length} pending: ${pending.join(', ')}`;
+  let body = '';
+  if (pending.length === 0 && partial.length === 0) {
+    body = `🎉 All ${paid.length} housemates have paid for ${summary.monthLabel}!`;
+  } else {
+    const parts = [`✅ ${paid.length} paid`];
+    if (partial.length > 0) parts.push(`⚡ ${partial.length} partial: ${partial.join(', ')}`);
+    if (pending.length > 0) parts.push(`⏳ ${pending.length} pending: ${pending.join(', ')}`);
+    body = parts.join(' • ');
+  }
 
   return sendToAll(
     `💰 Monthly Contribution Status — ${summary.monthLabel}`,

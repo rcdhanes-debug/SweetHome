@@ -289,9 +289,9 @@ export default function Collection() {
       <AmountModal
         open={Boolean(payTarget)}
         users={users}
-        title={payTarget?.payment.status === 'partial' ? 'Add Partial Payment' : 'Confirm Contribution'}
-        subtitle={payTarget ? `${payTarget.payment.user.name} • ${payTarget.payment.dueAmount ? `Remaining due: ₹${formatCurrency(payTarget.payment.dueAmount)}` : 'Payment received'}` : undefined}
-        defaultAmount={payTarget?.payment.dueAmount ?? (funding.contributionAmount - (payTarget?.payment.amount || 0))}
+        title={payTarget?.payment.status === 'partial' ? `Settle Balance — ${payTarget.payment.user.name}` : `Record Contribution — ${payTarget?.payment.user.name}`}
+        subtitle={payTarget ? `${payTarget.payment.user.name} • ${payTarget.payment.status === 'partial' ? `Already paid ₹${formatCurrency(payTarget.payment.amount)}. Enter remaining amount to settle.` : 'Enter amount received'}` : undefined}
+        defaultAmount={payTarget?.payment.dueAmount ?? Math.max(0, funding.contributionAmount - (payTarget?.payment.amount || 0))}
         defaultUser={payTarget?.payment.user._id}
         onConfirm={confirmPayAmount}
         onCancel={() => setPayTarget(null)}
