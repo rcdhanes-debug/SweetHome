@@ -38,9 +38,7 @@ export default function Redeem() {
     navigator.clipboard.writeText(upiId);
     toast.show(`✓ UPI Copied! Amount: ₹${amount}`);
     if (/Android/i.test(navigator.userAgent)) {
-      setTimeout(() => {
-        window.location.href = 'tez://';
-      }, 500);
+      window.location.href = 'intent://#Intent;scheme=tez;package=com.google.android.apps.nbu.paisa.user;end';
     }
   };
 

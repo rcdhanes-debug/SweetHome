@@ -63,9 +63,7 @@ export default function Dashboard() {
     toast.show('✓ Copied! Paste this in GPay');
     setTimeout(() => setCopiedUpi(false), 2000);
     if (/Android/i.test(navigator.userAgent)) {
-      setTimeout(() => {
-        window.location.href = 'tez://';
-      }, 500);
+      window.location.href = 'intent://#Intent;scheme=tez;package=com.google.android.apps.nbu.paisa.user;end';
     }
   };
 
