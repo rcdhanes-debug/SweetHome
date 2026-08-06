@@ -112,10 +112,10 @@ async function calculateAutoRollover(currentMonthKey) {
     ]);
     let pcCollected = 0;
     for (const p of pc.payments) {
-      if (p.paid) {
-        pcCollected += (p.amount || pc.contributionAmount);
-      } else if (p.amount > 0 && p.amount < pc.contributionAmount) {
+      if (p.amount > 0 && p.amount < pc.contributionAmount) {
         pcCollected += p.amount;
+      } else if (p.paid) {
+        pcCollected += (p.amount || pc.contributionAmount);
       }
     }
     const pcSpent = pcSpentAgg[0]?.total || 0;
@@ -149,15 +149,15 @@ async function getCurrentSummary() {
 
   const payments = populated.payments.map((p) => {
     let paidAmt = 0;
-    if (p.paid) {
-      paidAmt = p.amount || cycle.contributionAmount;
-    } else if (p.amount > 0 && p.amount < cycle.contributionAmount) {
+    if (p.amount > 0 && p.amount < cycle.contributionAmount) {
       paidAmt = p.amount;
+    } else if (p.paid) {
+      paidAmt = p.amount || cycle.contributionAmount;
     } else {
       paidAmt = 0;
     }
 
-    const isPaid = p.paid || paidAmt >= cycle.contributionAmount;
+    const isPaid = paidAmt >= cycle.contributionAmount;
     const isPartial = !isPaid && paidAmt > 0;
     const dueAmount = Math.max(0, cycle.contributionAmount - paidAmt);
     const status = isPaid ? 'paid' : (isPartial ? 'partial' : 'pending');
@@ -281,10 +281,10 @@ async function listHistory() {
   return cycles.map((c) => {
     let collected = 0;
     for (const p of c.payments) {
-      if (p.paid) {
-        collected += (p.amount || c.contributionAmount);
-      } else if (p.amount > 0 && p.amount < c.contributionAmount) {
+      if (p.amount > 0 && p.amount < c.contributionAmount) {
         collected += p.amount;
+      } else if (p.paid) {
+        collected += (p.amount || c.contributionAmount);
       }
     }
     return {
@@ -293,14 +293,17 @@ async function listHistory() {
       targetAmount: c.payments.length * c.contributionAmount,
       contributionAmount: c.contributionAmount,
       totalCollected: collected,
-      paidCount: c.payments.filter((p) => p.paid || (p.amount >= c.contributionAmount)).length,
+      paidCount: c.payments.filter((p) => (p.amount >= c.contributionAmount)).length,
       pendingCount: c.payments.filter((p) => !p.paid && (!p.amount || p.amount === c.contributionAmount)).length,
-      payments: c.payments.map((p) => ({
-        user: p.user ? { _id: p.user._id, name: p.user.name } : null,
-        paid: p.paid || (p.amount >= c.contributionAmount),
-        amount: p.paid ? (p.amount || c.contributionAmount) : (p.amount > 0 && p.amount < c.contributionAmount ? p.amount : 0),
-        paidAt: p.paidAt
-      }))
+      payments: c.payments.map((p) => {
+        const amt = (p.amount > 0 && p.amount < c.contributionAmount) ? p.amount : (p.paid ? (p.amount || c.contributionAmount) : 0);
+        return {
+          user: p.user ? { _id: p.user._id, name: p.user.name } : null,
+          paid: amt >= c.contributionAmount,
+          amount: amt,
+          paidAt: p.paidAt
+        };
+      })
     };
   });
 }
