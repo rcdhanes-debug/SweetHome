@@ -34,15 +34,14 @@ export default function Redeem() {
     return u?.upiId || DEFAULT_UPI_IDS[name] || (name ? `${name.toLowerCase()}@okaxis` : '');
   };
 
-  const buildUpiLink = (r) => {
-    const params = new URLSearchParams({
-      pa: r.upiId,
-      pn: r.createdBy?.name || 'Housemate',
-      am: String(r.amount),
-      cu: 'INR',
-      tn: r.note || `Redeem for ${r.createdBy?.name || 'housemate'}`,
-    });
-    return `upi://pay?${params.toString()}`;
+  const handleCopyAndPay = (upiId, amount) => {
+    navigator.clipboard.writeText(upiId);
+    toast.show(`✓ UPI Copied! Amount: ₹${amount}`);
+    if (/Android/i.test(navigator.userAgent)) {
+      setTimeout(() => {
+        window.location.href = 'intent://#Intent;package=com.google.android.apps.nbu.paisa.user;scheme=https;end';
+      }, 500);
+    }
   };
 
   const handleOpenForm = () => {
@@ -223,14 +222,15 @@ export default function Redeem() {
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', flexShrink: 0 }}>
-                <a
-                  href={buildUpiLink(r)}
+                <button
+                  type="button"
+                  onClick={() => handleCopyAndPay(r.upiId, r.amount)}
                   className="btn btn--primary btn--sm"
-                  style={{ textDecoration: 'none', gap: '5px' }}
+                  style={{ gap: '5px' }}
                   title={`Pay ₹${r.amount} to ${r.upiId}`}
                 >
-                  <Smartphone size={13} /> Pay
-                </a>
+                  <Smartphone size={13} /> Copy & Pay
+                </button>
                 <button
                   type="button"
                   className="btn btn--ghost btn--sm"

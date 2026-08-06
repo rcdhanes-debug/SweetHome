@@ -57,6 +57,18 @@ export default function Dashboard() {
     setTimeout(() => setCopiedUpi(false), 2000);
   };
 
+  const copyAndOpenGPay = () => {
+    navigator.clipboard.writeText(commonUpi);
+    setCopiedUpi(true);
+    toast.show('✓ Copied! Paste this in GPay');
+    setTimeout(() => setCopiedUpi(false), 2000);
+    if (/Android/i.test(navigator.userAgent)) {
+      setTimeout(() => {
+        window.location.href = 'intent://#Intent;package=com.google.android.apps.nbu.paisa.user;scheme=https;end';
+      }, 500);
+    }
+  };
+
   const openEditAccount = () => {
     setEditUpiInput(commonUpi);
     setEditQrImage(null);
@@ -333,16 +345,9 @@ export default function Dashboard() {
                   {commonUpi}
                 </div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <button type="button" className="btn btn--ghost btn--sm" onClick={copyUpi}>
-                    <Copy size={13} /> {copiedUpi ? 'Copied!' : 'Copy UPI'}
+                  <button type="button" className="btn btn--primary btn--sm" onClick={copyAndOpenGPay} style={{ gap: '4px' }}>
+                    <Copy size={13} /> {copiedUpi ? 'Copied!' : 'Copy & Open GPay'}
                   </button>
-                  <a
-                    href={`upi://pay?pa=${commonUpi}&pn=Sweet%20Home%20Fund&cu=INR`}
-                    className="btn btn--primary btn--sm"
-                    style={{ textDecoration: 'none', gap: '4px' }}
-                  >
-                    <Smartphone size={13} /> Pay via App
-                  </a>
                 </div>
               </div>
             </div>
@@ -565,16 +570,9 @@ export default function Dashboard() {
             Scan using GPay, PhonePe, Paytm, or any UPI app to transfer funds directly to the house account.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-            <button type="button" className="btn btn--ghost" onClick={copyUpi}>
-              <Copy size={15} /> {copiedUpi ? 'Copied!' : 'Copy UPI ID'}
+            <button type="button" className="btn btn--primary" onClick={copyAndOpenGPay}>
+              <Copy size={15} /> {copiedUpi ? 'Copied!' : 'Copy & Open GPay'}
             </button>
-            <a
-              href={`upi://pay?pa=${commonUpi}&pn=Sweet%20Home%20Fund&cu=INR`}
-              className="btn btn--primary"
-              style={{ textDecoration: 'none' }}
-            >
-              <Smartphone size={15} /> Open UPI App
-            </a>
           </div>
         </div>
       </BottomSheet>
