@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FolderPlus,
   Upload,
@@ -819,148 +820,194 @@ export default function Memories() {
         </div>
       </BottomSheet>
 
-      {/* Lightbox / Fullscreen Viewer */}
-      {activeLightboxPhoto && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(0,0,0,0.92)',
-            backdropFilter: 'blur(12px)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px'
-          }}
-          onClick={() => setLightboxIndex(-1)}
-        >
-          {/* Header controls */}
+      {/* Lightbox / Fullscreen Window Modal (Portaled to document.body) */}
+      {activeLightboxPhoto &&
+        createPortal(
           <div
             style={{
-              position: 'absolute',
-              top: '16px',
-              left: '20px',
-              right: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              color: '#fff',
-              zIndex: 2
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div>
-              <div style={{ fontSize: '16px', fontWeight: 800 }}>{activeLightboxPhoto.caption || activeLightboxPhoto.name}</div>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>
-                📁 {activeLightboxPhoto.folder} • Uploaded by {activeLightboxPhoto.uploadedBy?.name || 'Sweet Home'} on {formatDateTime(activeLightboxPhoto.uploadedAt)}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <a
-                href={activeLightboxPhoto.src}
-                download={activeLightboxPhoto.name || 'memory.jpg'}
-                className="btn btn--ghost btn--sm"
-                style={{ color: '#fff', background: 'rgba(255,255,255,0.15)' }}
-              >
-                <Download size={16} /> Download
-              </a>
-
-              <button
-                type="button"
-                className="btn btn--ghost btn--sm"
-                style={{ color: '#ef4444', background: 'rgba(239,68,68,0.2)' }}
-                onClick={() => setDeleteTarget(activeLightboxPhoto)}
-              >
-                <Trash2 size={16} /> Delete
-              </button>
-
-              <button
-                type="button"
-                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: '50%', padding: '8px', cursor: 'pointer' }}
-                onClick={() => setLightboxIndex(-1)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-          </div>
-
-          {/* Navigation Arrows */}
-          {filteredPhotos.length > 1 && (
-            <>
-              <button
-                type="button"
-                style={{
-                  position: 'absolute',
-                  left: '20px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'rgba(255,255,255,0.15)',
-                  border: 'none',
-                  color: '#fff',
-                  borderRadius: '50%',
-                  padding: '12px',
-                  cursor: 'pointer'
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxIndex((i) => (i - 1 + filteredPhotos.length) % filteredPhotos.length);
-                }}
-              >
-                <ChevronLeft size={24} />
-              </button>
-
-              <button
-                type="button"
-                style={{
-                  position: 'absolute',
-                  right: '20px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'rgba(255,255,255,0.15)',
-                  border: 'none',
-                  color: '#fff',
-                  borderRadius: '50%',
-                  padding: '12px',
-                  cursor: 'pointer'
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxIndex((i) => (i + 1) % filteredPhotos.length);
-                }}
-              >
-                <ChevronRight size={24} />
-              </button>
-            </>
-          )}
-
-          {/* Image (Uncropped Aspect Ratio) */}
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 999999,
+              background: 'rgba(0, 0, 0, 0.88)',
+              backdropFilter: 'blur(12px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '60px 16px 20px'
+              padding: '16px',
+              overflow: 'hidden'
             }}
+            onClick={() => setLightboxIndex(-1)}
           >
-            <img
-              src={activeLightboxPhoto.src}
-              alt={activeLightboxPhoto.name}
+            {/* Modal Card Window */}
+            <div
+              onClick={(e) => e.stopPropagation()}
               style={{
-                maxHeight: 'calc(100vh - 120px)',
-                maxWidth: 'calc(100vw - 120px)',
-                objectFit: 'contain',
-                borderRadius: '12px',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.7)',
-                display: 'block'
+                position: 'relative',
+                width: '100%',
+                maxWidth: '820px',
+                maxHeight: '85vh',
+                background: '#0f172a',
+                borderRadius: '20px',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
               }}
-            />
-          </div>
-        </div>
-      )}
+            >
+              {/* Header control bar */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 18px',
+                  background: '#1e293b',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+                  gap: '12px',
+                  flexShrink: 0
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {activeLightboxPhoto.caption || activeLightboxPhoto.name}
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    📁 {activeLightboxPhoto.folder} • Uploaded by {activeLightboxPhoto.uploadedBy?.name || 'Sweet Home'} on {formatDateTime(activeLightboxPhoto.uploadedAt)}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  <a
+                    href={activeLightboxPhoto.src}
+                    download={activeLightboxPhoto.name || 'memory.jpg'}
+                    className="btn btn--ghost btn--sm"
+                    style={{ color: '#f8fafc', background: 'rgba(255, 255, 255, 0.14)', fontSize: '12px', padding: '6px 12px' }}
+                  >
+                    <Download size={14} /> Download
+                  </a>
+
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    style={{ color: '#f87171', background: 'rgba(239, 68, 68, 0.22)', fontSize: '12px', padding: '6px 12px' }}
+                    onClick={() => setDeleteTarget(activeLightboxPhoto)}
+                  >
+                    <Trash2 size={14} /> Delete
+                  </button>
+
+                  <button
+                    type="button"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      border: 'none',
+                      color: '#f8fafc',
+                      borderRadius: '50%',
+                      width: '32px',
+                      height: '32px',
+                      display: 'grid',
+                      placeItems: 'center',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setLightboxIndex(-1)}
+                    title="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Photo Body */}
+              <div
+                style={{
+                  position: 'relative',
+                  flex: '1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: '#020617',
+                  padding: '16px',
+                  overflow: 'hidden',
+                  minHeight: '200px'
+                }}
+              >
+                {/* Navigation Arrows */}
+                {filteredPhotos.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      style={{
+                        position: 'absolute',
+                        left: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        border: '1px solid rgba(255, 255, 255, 0.25)',
+                        color: '#ffffff',
+                        borderRadius: '50%',
+                        width: '38px',
+                        height: '38px',
+                        display: 'grid',
+                        placeItems: 'center',
+                        cursor: 'pointer',
+                        zIndex: 4
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLightboxIndex((i) => (i - 1 + filteredPhotos.length) % filteredPhotos.length);
+                      }}
+                      title="Previous Photo"
+                    >
+                      <ChevronLeft size={22} />
+                    </button>
+
+                    <button
+                      type="button"
+                      style={{
+                        position: 'absolute',
+                        right: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        border: '1px solid rgba(255, 255, 255, 0.25)',
+                        color: '#ffffff',
+                        borderRadius: '50%',
+                        width: '38px',
+                        height: '38px',
+                        display: 'grid',
+                        placeItems: 'center',
+                        cursor: 'pointer',
+                        zIndex: 4
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLightboxIndex((i) => (i + 1) % filteredPhotos.length);
+                      }}
+                      title="Next Photo"
+                    >
+                      <ChevronRight size={22} />
+                    </button>
+                  </>
+                )}
+
+                <img
+                  src={activeLightboxPhoto.src}
+                  alt={activeLightboxPhoto.name}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: 'calc(85vh - 80px)',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    borderRadius: '10px',
+                    display: 'block'
+                  }}
+                />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Confirm Photo Delete Modal */}
       <ConfirmModal
