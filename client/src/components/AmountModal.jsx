@@ -3,7 +3,7 @@ import BottomSheet from './BottomSheet';
 import { formatCurrency } from '../utils/format';
 import { CONTRIBUTION_AMOUNT } from '../constants';
 
-export default function AmountModal({ open, users = [], title, subtitle, defaultAmount, defaultUser, onConfirm, onCancel }) {
+export default function AmountModal({ open, users = [], title, subtitle, defaultAmount, defaultUser, maxAmount, onConfirm, onCancel }) {
   const [amount, setAmount] = useState('');
   const [recordedBy, setRecordedBy] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,9 @@ export default function AmountModal({ open, users = [], title, subtitle, default
   }, [open, defaultAmount, defaultUser, users]);
 
   const amountNum = Number(amount);
-  const valid = Number.isFinite(amountNum) && amountNum > 0 && amountNum <= 100000000;
+  const max = maxAmount !== undefined && maxAmount !== null ? maxAmount : 100000000;
+  const isExceeding = Number.isFinite(amountNum) && amountNum > max;
+  const valid = Number.isFinite(amountNum) && amountNum > 0 && !isExceeding;
 
   const confirm = () => {
     if (!valid || loading) return;
@@ -36,6 +38,7 @@ export default function AmountModal({ open, users = [], title, subtitle, default
           type="number"
           inputMode="decimal"
           min="1"
+          max={max}
           step="1"
           placeholder="0"
           value={amount}
@@ -44,6 +47,11 @@ export default function AmountModal({ open, users = [], title, subtitle, default
         />
         {valid && <span className="amount-input__preview">{formatCurrency(amountNum)}</span>}
       </div>
+      {isExceeding && (
+        <div style={{ color: '#ef4444', fontSize: '13px', marginTop: '6px', fontWeight: 600 }}>
+          Maximum allowed amount is ₹{formatCurrency(max)}
+        </div>
+      )}
 
       {users && users.length > 0 && (
         <>

@@ -123,6 +123,74 @@ async function sendRemainingMoneyNotification() {
   return sendTelegramMessage(text);
 }
 
+async function sendNewRedeemNotification(redeemItem) {
+  const Redeem = require('../models/Redeem');
+  const User = require('../models/User');
+
+  let item = redeemItem;
+  if (typeof item === 'string' || item instanceof String) {
+    item = await Redeem.findById(item).populate('createdBy', 'name');
+  } else if (item && item._id) {
+    const existing = await Redeem.findById(item._id).populate('createdBy', 'name');
+    if (existing) item = existing;
+  }
+
+  if (!item) return false;
+
+  let requesterName = 'A housemate';
+  if (item.createdBy && item.createdBy.name) {
+    requesterName = item.createdBy.name;
+  } else if (item.createdBy) {
+    const u = await User.findById(item.createdBy).select('name');
+    if (u) requesterName = u.name;
+  }
+
+  const amountStr = Number(item.amount || 0).toLocaleString('en-IN');
+  const noteStr = item.note ? `\n📝 <b>Note</b>: ${item.note}` : '';
+
+  const text = `🤝 <b>New Redeem Request Created!</b>\n\n` +
+    `👤 <b>Requested By</b>: <b>${requesterName}</b>\n` +
+    `💰 <b>Amount</b>: <b>₹${amountStr}</b>\n` +
+    `💳 <b>UPI ID</b>: <code>${item.upiId}</code>${noteStr}\n\n` +
+    `Hi <b>Ashwin</b>! 👋 Please kindly check when you get a moment to settle the payout! ✨`;
+
+  return sendTelegramMessage(text);
+}
+
+async function sendRedeemClosedNotification(redeemItem, closedByName) {
+  const Redeem = require('../models/Redeem');
+  const User = require('../models/User');
+
+  let item = redeemItem;
+  if (typeof item === 'string' || item instanceof String) {
+    item = await Redeem.findById(item).populate('createdBy', 'name');
+  } else if (item && item._id) {
+    const existing = await Redeem.findById(item._id).populate('createdBy', 'name');
+    if (existing) item = existing;
+  }
+
+  if (!item) return false;
+
+  let requesterName = 'Housemate';
+  if (item.createdBy && item.createdBy.name) {
+    requesterName = item.createdBy.name;
+  } else if (item.createdBy) {
+    const u = await User.findById(item.createdBy).select('name');
+    if (u) requesterName = u.name;
+  }
+
+  const amountStr = Number(item.amount || 0).toLocaleString('en-IN');
+  const closedBy = closedByName || 'Ashwin';
+
+  const text = `✅ <b>Redeem Request Settled!</b>\n\n` +
+    `👤 <b>Requester</b>: ${requesterName}\n` +
+    `💰 <b>Amount</b>: ₹${amountStr}\n` +
+    `✅ <b>Settled By</b>: <b>${closedBy}</b>\n\n` +
+    `The payout has been completed! 🎉`;
+
+  return sendTelegramMessage(text);
+}
+
 async function sendUnpaidRedeemReminder() {
   const Redeem = require('../models/Redeem');
   const openRedeems = await Redeem.find({ closed: false }).populate('createdBy', 'name');
@@ -155,5 +223,7 @@ module.exports = {
   sendTestMessage,
   sendTomorrowChoresNotification,
   sendRemainingMoneyNotification,
+  sendNewRedeemNotification,
+  sendRedeemClosedNotification,
   sendUnpaidRedeemReminder
 };

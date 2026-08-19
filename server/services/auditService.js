@@ -49,11 +49,21 @@ async function log({ action, performedBy = null, targetUser = null, details = {}
       createdBy: performedBy
     });
 
-    // Send Telegram notification ONLY for Balance updates (Chore schedule sent automatically at 9:00 PM IST)
+    // Trigger live Telegram notifications for balance changes and redeem requests
     try {
       const telegram = require('./telegramService');
-      if (['CONTRIBUTION_PAID', 'CONTRIBUTION_RESET', 'FUNDING_AMOUNT_SET', 'COMMON_ACCOUNT_UPDATED'].includes(action)) {
+      if (['EXPENSE_CREATED', 'EXPENSE_DELETED', 'CONTRIBUTION_PAID', 'CONTRIBUTION_RESET', 'FUNDING_AMOUNT_SET', 'COMMON_ACCOUNT_UPDATED', 'ROLLOVER_AMOUNT_SET'].includes(action)) {
         telegram.sendRemainingMoneyNotification().catch(() => {});
+      } else if (action === 'REDEEM_CREATED') {
+        if (details && details.id) {
+          telegram.sendNewRedeemNotification(details.id).catch(() => {});
+        } else {
+          telegram.sendUnpaidRedeemReminder().catch(() => {});
+        }
+      } else if (action === 'REDEEM_CLOSED') {
+        if (details && details.id) {
+          telegram.sendRedeemClosedNotification(details.id, details.closedBy).catch(() => {});
+        }
       }
     } catch (_) {}
   } catch (err) {

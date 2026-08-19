@@ -292,6 +292,7 @@ export default function Collection() {
         title={payTarget?.payment.status === 'partial' ? `Settle Balance — ${payTarget.payment.user.name}` : `Record Contribution — ${payTarget?.payment.user.name}`}
         subtitle={payTarget ? `${payTarget.payment.user.name} • ${payTarget.payment.status === 'partial' ? `Already paid ₹${formatCurrency(payTarget.payment.amount)}. Enter remaining amount to settle.` : 'Enter amount received'}` : undefined}
         defaultAmount={payTarget?.payment.dueAmount ?? Math.max(0, funding.contributionAmount - (payTarget?.payment.amount || 0))}
+        maxAmount={payTarget?.payment.dueAmount ?? Math.max(0, funding.contributionAmount - (payTarget?.payment.amount || 0))}
         defaultUser={payTarget?.payment.user._id}
         onConfirm={confirmPayAmount}
         onCancel={() => setPayTarget(null)}

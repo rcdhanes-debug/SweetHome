@@ -211,25 +211,28 @@ async function markPaid({ userId, performedBy, amount }) {
   if (!payment) throw new AppError('User is not part of this month\'s collection.', 404);
 
   let currentAmt = 0;
-  if (payment.paid) {
-    currentAmt = payment.amount || cycle.contributionAmount;
-  } else if (payment.amount > 0 && payment.amount < cycle.contributionAmount) {
+  if (payment.amount > 0) {
     currentAmt = payment.amount;
-  } else {
-    currentAmt = 0;
+  } else if (payment.paid) {
+    currentAmt = cycle.contributionAmount;
   }
 
-  if (payment.paid || currentAmt >= cycle.contributionAmount) {
+  const remainingDue = Math.max(0, cycle.contributionAmount - currentAmt);
+  if (currentAmt >= cycle.contributionAmount || remainingDue <= 0) {
     throw new AppError('This contribution is already fully paid.', 409);
   }
 
-  let addAmount = cycle.contributionAmount - currentAmt;
+  let addAmount = remainingDue;
   if (amount !== undefined && amount !== null) {
     const n = Number(amount);
-    if (!Number.isFinite(n) || n <= 0 || n > 100000000) {
+    if (!Number.isFinite(n) || n <= 0) {
       throw new AppError('Payment amount must be a positive number.', 400);
     }
-    addAmount = Math.round(n * 100) / 100;
+    const rounded = Math.round(n * 100) / 100;
+    if (rounded > remainingDue) {
+      throw new AppError(`Payment amount cannot exceed the remaining due amount of ₹${remainingDue.toLocaleString('en-IN')}.`, 400);
+    }
+    addAmount = rounded;
   }
 
   const newTotal = currentAmt + addAmount;

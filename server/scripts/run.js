@@ -170,7 +170,7 @@ process.on('SIGTERM', () => shutdown(0));
     openBrowser(`http://localhost:${PROD_PORT}/dashboard`);
     log(`Sweet Home running — http://localhost:${PROD_PORT}`);
   } else {
-    spawnTrack('Sweet Home Server', nodeCmd, ['--watch', 'index.js'], { cwd: SERVER });
+    spawnTrack('Sweet Home Server', nodeCmd, ['--watch-path=.', 'index.js'], { cwd: SERVER });
     spawnTrack('Sweet Home Client', nodeCmd, [VITE], { cwd: CLIENT });
     await new Promise((r) => setTimeout(r, 4500));
     openBrowser(`http://localhost:${DEV_PORT}/dashboard`);

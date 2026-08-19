@@ -28,7 +28,8 @@ async function handleCommand(msg, token) {
   const chatId = msg.chat?.id;
   if (!text || !chatId) return;
 
-  const command = text.split(' ')[0].toLowerCase().replace('@sweet_home_updates_bot', '');
+  const firstWord = text.split(' ')[0].toLowerCase();
+  const command = firstWord.split('@')[0];
   const tz = TIMEZONE || 'Asia/Kolkata';
 
   if (command === '/getbalance' || command === '/balance') {
@@ -82,6 +83,7 @@ async function handleCommand(msg, token) {
     return replyTelegram(token, chatId, reply);
   }
 
+  if (command === '/pending' || command === '/unpaid' || command === '/dues') {
     const summary = await fundingService.getCurrentSummary();
     const pendingItems = summary.payments
       .filter((p) => p.status !== 'paid')
@@ -96,6 +98,7 @@ async function handleCommand(msg, token) {
     const reply = `⏳ <b>Pending Monthly Contributions (${summary.monthLabel})</b>\n\n` +
       (pendingItems ? pendingItems + `\n\nTarget: ₹${summary.contributionAmount.toLocaleString('en-IN')} each` : `🎉 All housemates have paid for ${summary.monthLabel}!`);
     return replyTelegram(token, chatId, reply);
+  }
 
   if (command === '/redeem') {
     const Redeem = require('../models/Redeem');
