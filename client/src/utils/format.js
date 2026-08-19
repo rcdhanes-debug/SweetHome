@@ -56,16 +56,19 @@ export function todayISTDateString() {
   return `${p.year}-${p.month}-${p.day}`;
 }
 
-export function deadlineInfo(day = 5, now = new Date()) {
+export function deadlineInfo(day = 5, now = new Date(), allPaid = false) {
+  if (allPaid) {
+    return { passed: false, allPaid: true, daysLeft: null, text: '🎉 All housemates paid!' };
+  }
   const p = partsOf(now);
   const today = Number(p.day);
-  if (today > day) return { passed: true, daysLeft: null, text: 'Payment deadline passed' };
+  if (today > day) return { passed: true, allPaid: false, daysLeft: null, text: 'Payment deadline passed' };
   const daysLeft = day - today;
   let text;
   if (daysLeft === 0) text = 'Due today';
   else if (daysLeft === 1) text = 'Due tomorrow';
   else text = `${daysLeft} days remaining`;
-  return { passed: false, daysLeft, text };
+  return { passed: false, allPaid: false, daysLeft, text };
 }
 
 export function greeting() {

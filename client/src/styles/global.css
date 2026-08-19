@@ -726,13 +726,119 @@ a {
 
 .text-input {
   width: 100%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: #141c2e !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
   border-radius: 12px;
   padding: 13px 14px;
   font-size: 15px;
   outline: none;
   transition: border-color 0.15s;
+}
+
+.field__input,
+.select,
+select,
+input[type="text"],
+input[type="number"],
+input[type="password"],
+textarea {
+  width: 100%;
+  background: #141c2e !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14.5px;
+  font-weight: 600;
+  outline: none;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field__input:focus,
+.text-input:focus,
+.select:focus,
+select:focus,
+textarea:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.field__input::placeholder,
+.text-input::placeholder,
+textarea::placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.85;
+}
+
+/* ─── Compact Classic Yellow Memory Folder Cards ─── */
+.folder-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  padding: 8px 10px;
+  min-height: 58px;
+  border-radius: 0 10px 10px 10px;
+  background: linear-gradient(135deg, #fef08a 0%, #facc15 100%) !important;
+  border: 1px solid #eab308 !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  color: #713f12 !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  margin-top: 6px;
+}
+
+/* Classic Folder Tab Notch */
+.folder-card::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 0;
+  width: 38px;
+  height: 7px;
+  border-radius: 5px 5px 0 0;
+  background: #facc15;
+  border-top: 1px solid #eab308;
+  border-left: 1px solid #eab308;
+  border-right: 1px solid #eab308;
+}
+
+.folder-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(234, 179, 8, 0.45);
+}
+
+.folder-card--active {
+  background: linear-gradient(135deg, #fde047 0%, #ca8a04 100%) !important;
+  border: 2px solid #a16207 !important;
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.6) !important;
+}
+
+.folder-card--active::before {
+  background: #fde047;
+  border-color: #a16207;
+}
+
+.folder-card__name {
+  font-weight: 850;
+  font-size: 11.5px;
+  color: #422006;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+.folder-card__count {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #854d0e;
+  margin-top: 1px;
+  line-height: 1;
 }
 
 .text-input:focus {
@@ -1282,6 +1388,16 @@ a {
   background: var(--red-bg);
   border-color: rgba(239, 68, 68, 0.4);
   color: #fca5a5;
+}
+
+.deadline-card--success {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.text-success {
+  color: #10b981;
 }
 
 .deadline-card__label {
@@ -2294,14 +2410,21 @@ a {
   .desktop-nav {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     width: 230px;
-    padding: 24px 16px;
+    padding: 16px 14px;
     position: sticky;
     top: 0;
     height: 100vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     border-right: 1px solid var(--border);
     background: var(--bg-2);
+  }
+
+  .desktop-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .desktop-nav .brand-name {
@@ -4471,5 +4594,32 @@ a {
   .btn {
     padding: 10px 14px;
     font-size: 13px;
+  }
+}
+
+/* ─── Memories Page Mobile Responsiveness ─── */
+@media (max-width: 640px) {
+  .memory-hero {
+    padding: 12px 14px !important;
+  }
+
+  .memory-hero__actions {
+    width: 100%;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    margin-top: 6px;
+  }
+
+  .memory-hero__actions .btn {
+    flex: 1 1 calc(33.333% - 6px);
+    font-size: 11px !important;
+    padding: 6px 4px !important;
+    justify-content: center !important;
+  }
+
+  .memory-photo-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
   }
 }

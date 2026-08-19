@@ -27,6 +27,19 @@ const requireAuth = asyncHandler(async (req, res, next) => {
   next();
 });
 
+const optionalAuth = asyncHandler(async (req, res, next) => {
+  const header = req.headers.authorization || '';
+  if (header.startsWith('Bearer ')) {
+    const token = header.slice(7);
+    try {
+      const payload = jwt.verify(token, JWT_SECRET);
+      const user = await User.findById(payload.userId);
+      if (user) req.user = user;
+    } catch (_) {}
+  }
+  next();
+});
+
 const requireAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== 'admin') {
     throw new AppError('Admin permission required.', 403);
@@ -34,4 +47,4 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { requireAuth, requireAdmin };
+module.exports = { requireAuth, optionalAuth, requireAdmin };

@@ -7,6 +7,8 @@ const photoSchema = new mongoose.Schema(
     mime: { type: String, default: 'image/jpeg' },
     size: { type: Number, default: 0 },
     data: { type: String, required: true },
+    folder: { type: String, default: 'General', index: true },
+    caption: { type: String, default: '' },
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },
   { timestamps: true }

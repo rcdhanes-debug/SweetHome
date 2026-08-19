@@ -8,7 +8,10 @@ export function ToastProvider({ children }) {
 
   const show = useCallback((message, type = 'success') => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    setToasts((t) => [...t, { id, message, type }]);
+    setToasts((t) => {
+      if (t.some((x) => x.message === message)) return t;
+      return [...t.slice(-2), { id, message, type }];
+    });
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
   }, []);
 

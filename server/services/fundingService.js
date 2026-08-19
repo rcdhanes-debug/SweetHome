@@ -194,7 +194,7 @@ async function getCurrentSummary() {
     paidCount,
     partialCount,
     pendingCount,
-    deadline: { day: PAYMENT_DEADLINE_DAY, ...deadlineInfo(PAYMENT_DEADLINE_DAY) },
+    deadline: { day: PAYMENT_DEADLINE_DAY, ...deadlineInfo(PAYMENT_DEADLINE_DAY, new Date(), paidCount === payments.length && pendingCount === 0 && partialCount === 0) },
     commonAccount,
     payments: payments.sort((a, b) => {
       const order = Object.fromEntries(USER_ORDER.map((n, i) => [n, i]));

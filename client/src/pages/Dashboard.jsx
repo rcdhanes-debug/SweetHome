@@ -285,7 +285,9 @@ export default function Dashboard() {
             </div>
             <ProgressBar value={funding.totalCollected} max={funding.targetAmount} />
             <div className="card__foot">
-              <span className={deadline.passed ? 'text-danger' : ''}>{deadline.text}</span>
+              <span className={funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? 'text-success' : (deadline.passed ? 'text-danger' : '')}>
+                {funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? '🎉 All paid!' : deadline.text}
+              </span>
               <span>
                 <CountUp value={funding.paidCount} />/{funding.paidCount + funding.pendingCount} paid
               </span>
@@ -470,9 +472,14 @@ export default function Dashboard() {
               <h3>
                 <ImageIcon size={16} /> Our Memories
               </h3>
-              <button type="button" className="btn btn--primary btn--sm" onClick={() => fileRef.current?.click()}>
-                <Plus size={15} /> Add Photo
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Link to="/memories" className="link-btn">
+                  Open Gallery <ChevronRight size={14} />
+                </Link>
+                <button type="button" className="btn btn--primary btn--sm" onClick={() => fileRef.current?.click()}>
+                  <Plus size={15} /> Add Photo
+                </button>
+              </div>
             </div>
             <input
               ref={fileRef}

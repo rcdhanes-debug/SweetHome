@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
-import { House, Wallet, Receipt, CalendarDays, ClipboardList, ShieldCheck, Users, CalendarClock, CheckCircle2, HandCoins } from 'lucide-react';
+import { House, Wallet, Receipt, CalendarDays, ClipboardList, ShieldCheck, Users, CalendarClock, CheckCircle2, HandCoins, FolderHeart } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
@@ -15,6 +15,7 @@ const NAV = [
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/redeem', label: 'Redeem', icon: HandCoins },
   { to: '/chores', label: 'Schedule', icon: CalendarDays },
+  { to: '/memories', label: 'Memories', icon: FolderHeart },
   { to: '/noticeboard', label: 'Board', icon: ClipboardList },
   { to: '/calendar', label: 'Calendar', icon: CalendarClock },
   { to: '/members', label: 'Members', icon: Users }
@@ -48,6 +49,7 @@ export default function Layout() {
     '/dues': 'Dues & Payoff',
     '/print': 'Monthly Report',
     '/expenses': 'Expenses',
+    '/memories': 'Memories & Gallery',
     '/chores': 'Schedule',
     '/noticeboard': 'Noticeboard',
     '/members': 'Members',

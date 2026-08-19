@@ -125,6 +125,19 @@ async function handleCommand(msg, token) {
   }
 }
 
+const processedUpdateIds = new Set();
+
+function isRecentlyProcessed(updateId) {
+  if (!updateId) return false;
+  if (processedUpdateIds.has(updateId)) return true;
+  processedUpdateIds.add(updateId);
+  if (processedUpdateIds.size > 500) {
+    const firstKey = processedUpdateIds.values().next().value;
+    processedUpdateIds.delete(firstKey);
+  }
+  return false;
+}
+
 async function startBotPolling() {
   if (isPolling) return;
   isPolling = true;
@@ -144,7 +157,9 @@ async function startBotPolling() {
 
       if (data.ok && Array.isArray(data.result)) {
         for (const update of data.result) {
-          pollingOffset = update.update_id + 1;
+          pollingOffset = Math.max(pollingOffset, update.update_id + 1);
+          if (isRecentlyProcessed(update.update_id)) continue;
+
           if (update.message && update.message.text) {
             handleCommand(update.message, token).catch((err) => {
               console.error('[telegram-bot] Command execution error:', err.message);

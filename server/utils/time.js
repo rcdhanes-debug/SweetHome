@@ -47,18 +47,21 @@ function currentWeekday() {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: HOUSEHOLD_TZ }).format(new Date());
 }
 
-function deadlineInfo(deadlineDay = 5, now = new Date()) {
+function deadlineInfo(deadlineDay = 5, now = new Date(), allPaid = false) {
+  if (allPaid) {
+    return { passed: false, allPaid: true, daysLeft: null, text: '🎉 All housemates paid!' };
+  }
   const p = istParts(now);
   const today = Number(p.day);
   if (today > deadlineDay) {
-    return { passed: true, daysLeft: null, text: 'Payment deadline passed' };
+    return { passed: true, allPaid: false, daysLeft: null, text: 'Payment deadline passed' };
   }
   const daysLeft = deadlineDay - today;
   let text;
   if (daysLeft === 0) text = 'Due today';
   else if (daysLeft === 1) text = 'Due tomorrow';
   else text = `${daysLeft} days remaining`;
-  return { passed: false, daysLeft, text };
+  return { passed: false, allPaid: false, daysLeft, text };
 }
 
 module.exports = {

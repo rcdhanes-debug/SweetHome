@@ -76,11 +76,15 @@ export default function Dues() {
         </div>
       </section>
 
-      <section className={`deadline-card ${deadline.passed ? 'deadline-card--danger' : ''}`}>
+      <section className={`deadline-card ${funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? 'deadline-card--success' : (deadline.passed ? 'deadline-card--danger' : '')}`}>
         <CalendarClock size={20} />
         <div>
-          <div className="deadline-card__label">Deadline — 5th of month</div>
-          <div className="deadline-card__text">{deadline.text}</div>
+          <div className="deadline-card__label">
+            {funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? 'Monthly Collection Complete' : 'Deadline — 5th of month'}
+          </div>
+          <div className="deadline-card__text">
+            {funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? '🎉 All 9 housemates have paid!' : deadline.text}
+          </div>
         </div>
       </section>
 
