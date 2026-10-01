@@ -4,7 +4,9 @@ const asyncHandler = require('../utils/asyncHandler');
 const { monthKey } = require('../utils/time');
 
 const getCurrent = asyncHandler(async (req, res) => {
-  res.json(await funding.getCurrentSummary());
+  const { month } = req.query;
+  const target = month && /^\d{4}-\d{2}$/.test(month) ? month : monthKey();
+  res.json(await funding.getCurrentSummary(target));
 });
 
 const getHistory = asyncHandler(async (req, res) => {

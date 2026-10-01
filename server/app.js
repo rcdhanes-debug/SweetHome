@@ -14,7 +14,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '16mb' }));
 if (LOG_LEVEL !== 'none') app.use(morgan(LOG_LEVEL));
 
-const BUILD_TIME = process.env.VERCEL_GIT_COMMIT_SHA || process.env.BUILD_ID || 'v1.0.0';
+const BUILD_TIME = 'v1.0.1-' + Date.now();
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString(), version: BUILD_TIME }));
 app.get('/api/version', (req, res) => res.json({ version: BUILD_TIME, ts: Date.now() }));
@@ -29,8 +29,8 @@ app.use('/api/noticeboard', require('./routes/noticeRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
-app.use('/api/photos', express.json({ limit: '16mb' }), require('./routes/photoRoutes'));
-app.use('/api/photo', require('./routes/photoRoutes'));
+// app.use('/api/photos', express.json({ limit: '16mb' }), require('./routes/photoRoutes'));
+// app.use('/api/photo', require('./routes/photoRoutes'));
 app.use('/api/push', require('./routes/pushRoutes'));
 
 // Serve the built client in production.

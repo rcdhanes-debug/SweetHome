@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Wallet, Users, TrendingUp, ChevronRight, Image as ImageIcon, Plus, Trash2, CalendarClock, CheckCircle2, QrCode, Copy, Smartphone, Pencil } from 'lucide-react';
+import { ArrowRight, Users, TrendingUp, ChevronRight, CalendarClock, CheckCircle2, QrCode, Smartphone, Pencil } from 'lucide-react';
 import gsap from 'gsap';
 import { useReducedMotion } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import * as photoApi from '../services/photo';
 import * as fundingApi from '../services/funding';
 import { resolveMediaUrl } from '../services/api';
 import ProgressBar from '../components/ProgressBar';
@@ -17,7 +16,6 @@ import CategoryIcon from '../components/CategoryIcon';
 import EmptyState from '../components/EmptyState';
 import BottomSheet from '../components/BottomSheet';
 import ConfirmModal from '../components/ConfirmModal';
-import Avatar from '../components/Avatar';
 import PushNotificationBanner from '../components/PushNotificationBanner';
 import { EVENT_META } from '../constants';
 import { formatCurrency, formatDate, todayDayName, deadlineInfo, todayISTDateString } from '../utils/format';
@@ -28,15 +26,6 @@ export default function Dashboard() {
   const toast = useToast();
   const reduced = useReducedMotion();
 
-  const [photos, setPhotos] = useState([]);
-  const [photosLoading, setPhotosLoading] = useState(true);
-  const [viewer, setViewer] = useState(null);
-  const [addOpen, setAddOpen] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const [selectedName, setSelectedName] = useState('');
-  const [photoBusy, setPhotoBusy] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
   const [qrModal, setQrModal] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [editAccountOpen, setEditAccountOpen] = useState(false);
@@ -44,7 +33,6 @@ export default function Dashboard() {
   const [editQrImage, setEditQrImage] = useState(null);
   const [accountBusy, setAccountBusy] = useState(false);
 
-  const fileRef = useRef(null);
   const qrFileRef = useRef(null);
 
   const commonUpi = funding?.commonAccount?.upiId || 'sweethome@okaxis';
@@ -116,20 +104,6 @@ export default function Dashboard() {
     }
   };
 
-  const loadPhotos = useCallback(async () => {
-    try {
-      setPhotos(await photoApi.listPhotos());
-    } catch (_) {
-      /* photos are decorative; keep gallery hidden on failure */
-    } finally {
-      setPhotosLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadPhotos();
-  }, [loadPhotos]);
-
   useEffect(() => {
     if (reduced || loading.funding) return undefined;
     const circles = document.querySelectorAll('.hero-deco__circle');
@@ -158,61 +132,6 @@ export default function Dashboard() {
     .filter((e) => e.date >= todayISTDateString())
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 3);
-
-  const onPickPhoto = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      toast.show('Only JPEG, PNG, or WebP images are allowed.', 'error');
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      toast.show('Image too large — max 8 MB.', 'error');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setSelectedPhoto(reader.result);
-      setSelectedName(file.name);
-      setAddOpen(true);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
-
-  const doUploadPhoto = async () => {
-    if (!selectedPhoto) return;
-    setPhotoBusy(true);
-    try {
-      await photoApi.uploadPhoto(null, selectedPhoto, selectedName);
-      toast.show('✓ Photo added');
-      setAddOpen(false);
-      setSelectedPhoto(null);
-      setSelectedName('');
-      await loadPhotos();
-    } catch (err) {
-      if (err.message !== 'Cancelled') toast.show(err.message, 'error');
-    } finally {
-      setPhotoBusy(false);
-    }
-  };
-
-  const doDeletePhoto = async () => {
-    if (!deleteTarget) return;
-    setDeleteBusy(true);
-    try {
-      await runWithAuth({ title: 'Remove Photo', subtitle: 'Admin PIN required', adminOnly: true }, async (token) => {
-        await photoApi.deletePhoto(token, deleteTarget._id);
-      });
-      toast.show('Photo removed');
-      setDeleteTarget(null);
-      await loadPhotos();
-    } catch (err) {
-      if (err.message !== 'Cancelled') toast.show(err.message, 'error');
-    } finally {
-      setDeleteBusy(false);
-    }
-  };
 
   return (
     <div className="page">
@@ -466,102 +385,8 @@ export default function Dashboard() {
               </div>
             )}
           </section>
-
-          <section className="card dash-photos">
-            <div className="card__head">
-              <h3>
-                <ImageIcon size={16} /> Our Memories
-              </h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Link to="/memories" className="link-btn">
-                  Open Gallery <ChevronRight size={14} />
-                </Link>
-                <button type="button" className="btn btn--primary btn--sm" onClick={() => fileRef.current?.click()}>
-                  <Plus size={15} /> Add Photo
-                </button>
-              </div>
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="visually-hidden"
-              onChange={onPickPhoto}
-            />
-            {photosLoading ? (
-              <Skeleton height={110} />
-            ) : photos.length === 0 ? (
-              <EmptyState icon="🖼️" title="No memories yet" subtitle='Tap "Add Photo" to start the gallery.' />
-            ) : (
-              <div className="photo-grid">
-                {photos.map((p) => (
-                  <div key={p._id} className="photo-tile" onClick={() => setViewer(p)}>
-                    <img src={resolveMediaUrl(p.src)} alt={p.name || 'Memory'} loading="lazy" />
-                    {isAdmin && (
-                      <button
-                        type="button"
-                        className="photo-tile__del"
-                        aria-label="Remove photo"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTarget(p);
-                        }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                    {p.name && <span className="photo-tile__name">{p.name}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
         </div>
       )}
-
-      <BottomSheet open={Boolean(viewer)} onClose={() => setViewer(null)} title={viewer?.name || 'Memory'}>
-        <div className="photo-viewer">
-          <img src={resolveMediaUrl(viewer?.src)} alt={viewer?.name || 'Memory'} />
-        </div>
-        {viewer && (
-          <p className="muted sheet-subtitle">Added {formatDate(viewer.uploadedAt)}</p>
-        )}
-      </BottomSheet>
-
-      <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title="Add Photo">
-        {selectedPhoto && (
-          <div className="photo-viewer">
-            <img src={selectedPhoto} alt="Preview" />
-          </div>
-        )}
-        <label className="field-label">Name (optional)</label>
-        <input
-          className="text-input"
-          value={selectedName}
-          onChange={(e) => setSelectedName(e.target.value)}
-          placeholder="e.g. Housewarming dinner"
-          maxLength={120}
-        />
-        <div className="sheet-actions">
-          <button type="button" className="btn btn--ghost" onClick={() => setAddOpen(false)}>
-            Cancel
-          </button>
-          <button type="button" className="btn btn--primary" disabled={photoBusy} onClick={doUploadPhoto}>
-            {photoBusy ? 'Uploading…' : 'Upload Photo'}
-          </button>
-        </div>
-      </BottomSheet>
-
-      <ConfirmModal
-        open={Boolean(deleteTarget)}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={doDeletePhoto}
-        loading={deleteBusy}
-        title="Remove Photo"
-        message={`Remove ${deleteTarget?.name ? `"${deleteTarget.name}"` : 'this photo'} from the gallery?`}
-        confirmLabel="Remove"
-        danger
-      />
 
       <BottomSheet open={qrModal} onClose={() => setQrModal(false)} title="Sweet Home Common Account QR">
         <div style={{ textAlign: 'center', padding: '10px 0' }}>

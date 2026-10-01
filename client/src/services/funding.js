@@ -2,7 +2,7 @@ import api from './api';
 
 const auth = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
 
-export const getCurrent = () => api.get('/funding/current');
+export const getCurrent = (month) => api.get('/funding/current', { params: { month } });
 export const getHistory = () => api.get('/funding/history');
 export const getReport = (month) => api.get('/funding/report', { params: { month } });
 

@@ -125,8 +125,8 @@ async function calculateAutoRollover(currentMonthKey) {
   return totalRollover;
 }
 
-async function getCurrentSummary() {
-  const cycle = await currentCycle();
+async function getCurrentSummary(targetMonth = monthKey()) {
+  const cycle = await ensureCycle(targetMonth);
   const populated = await FundingCycle.findById(cycle._id).populate('payments.user', 'name role').populate('payments.recordedBy', 'name');
 
   const { start, end } = istMonthRange(cycle.month);

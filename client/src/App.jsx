@@ -9,7 +9,6 @@ import Dashboard from './pages/Dashboard';
 import Collection from './pages/Collection';
 import Redeem from './pages/Redeem';
 import Expenses from './pages/Expenses';
-import Memories from './pages/Memories';
 import Chores from './pages/Chores';
 import Noticeboard from './pages/Noticeboard';
 import Members from './pages/Members';
@@ -69,7 +68,6 @@ export default function App() {
                 <Route path="/dues" element={<Dues />} />
                 <Route path="/print" element={<Print />} />
                 <Route path="/expenses" element={<Expenses />} />
-                <Route path="/memories" element={<Memories />} />
                 <Route path="/chores" element={<Chores />} />
                 <Route path="/noticeboard" element={<Noticeboard />} />
                 <Route path="/members" element={<Members />} />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HandCoins, Plus, Send, CheckCircle2, RotateCcw, Trash2, Wallet, Smartphone } from 'lucide-react';
+import { HandCoins, Plus, Send, CheckCircle2, RotateCcw, Trash2, Wallet, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -15,7 +15,7 @@ import * as expenseApi from '../services/expenses';
 const UPI_PATTERN = /^[^\s@]+@[a-zA-Z]{2,}$/;
 
 export default function Redeem() {
-  const { redeems, users, loading, reloadRedeems, reloadExpenses } = useApp();
+  const { redeems = [], users = [], loading, reloadRedeems, reloadExpenses } = useApp();
   const { isAdmin, session, runWithAuth } = useAuth();
   const toast = useToast();
 
@@ -28,6 +28,9 @@ export default function Redeem() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmPay, setConfirmPay] = useState(null); // redeem being closed
   const [payerName, setPayerName] = useState('');     // who is marking it paid
+  const [openPage, setOpenPage] = useState(1);
+  const [closedPage, setClosedPage] = useState(1);
+  const pageSize = 10;
 
   const getUpiFor = (name) => {
     const u = users.find((x) => x.name === name);
@@ -149,8 +152,15 @@ export default function Redeem() {
     await run({ busy: `del-${target._id}`, pin: { title: 'Delete Redeem Request', subtitle: `${target.createdBy?.name} • ${formatCurrency(target.amount)}`, adminOnly: true } }, (t) => redeemApi.deleteRedeem(t, target._id), '✓ Removed');
   };
 
-  const open = redeems.filter((r) => !r.closed);
-  const closed = redeems.filter((r) => r.closed);
+  const open = (redeems || []).filter((r) => !r.closed);
+  const closed = (redeems || []).filter((r) => r.closed);
+
+  const openTotalPages = Math.ceil(open.length / pageSize) || 1;
+  const paginatedOpen = open.slice((openPage - 1) * pageSize, openPage * pageSize);
+
+  const closedTotalPages = Math.ceil(closed.length / pageSize) || 1;
+  const paginatedClosed = closed.slice((closedPage - 1) * pageSize, closedPage * pageSize);
+
   const pendingTotal = open.reduce((s, r) => s + r.amount, 0);
   const housemateList = users.length > 0 ? users.map((u) => u.name) : HOUSEMATES;
 
@@ -199,46 +209,72 @@ export default function Redeem() {
       ) : open.length === 0 ? (
         <EmptyState icon="💸" title="Nothing pending" subtitle="No open redeem requests. Spent money for the house? Raise one." />
       ) : (
-        <div className="nb-list card">
-          {open.map((r) => (
-            <div key={r._id} className="nb-row">
-              <div className="nb-row__icon">
-                <HandCoins size={18} />
-              </div>
-              <div className="nb-row__body">
-                <div className="nb-row__text">
-                  {formatCurrency(r.amount)}
-                  <span className="badge badge--today">Open</span>
+        <>
+          <div className="nb-list card">
+            {paginatedOpen.map((r) => (
+              <div key={r._id} className="nb-row">
+                <div className="nb-row__icon">
+                  <HandCoins size={18} />
                 </div>
-                <div className="redeem-upi">{r.upiId}</div>
-                {r.note && <div className="nb-row__desc">{r.note}</div>}
-                <div className="nb-row__meta">
-                  Raised by {r.createdBy?.name || '—'} • {formatDate(r.createdAt)} • {formatTime(r.createdAt)}
+                <div className="nb-row__body">
+                  <div className="nb-row__text">
+                    {formatCurrency(r.amount)}
+                    <span className="badge badge--today">Open</span>
+                  </div>
+                  <div className="redeem-upi">{r.upiId}</div>
+                  {r.note && <div className="nb-row__desc">{r.note}</div>}
+                  <div className="nb-row__meta">
+                    Raised by {r.createdBy?.name || '—'} • {formatDate(r.createdAt)} • {formatTime(r.createdAt)}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', flexShrink: 0 }}>
+                  <a
+                    href="intent://pay#Intent;scheme=upi;end"
+                    onClick={() => handleCopyAndPay(r.upiId, r.amount)}
+                    className="btn btn--primary btn--sm"
+                    style={{ textDecoration: 'none', gap: '5px' }}
+                    title={`Pay ₹${r.amount} to ${r.upiId}`}
+                  >
+                    <Smartphone size={13} /> Copy & Pay
+                  </a>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    disabled={busy === `redeem-${r._id}`}
+                    onClick={() => setConfirmPay(r)}
+                    title="Mark as settled"
+                  >
+                    <CheckCircle2 size={13} /> Close
+                  </button>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end', flexShrink: 0 }}>
-                <a
-                  href="intent://pay#Intent;scheme=upi;end"
-                  onClick={() => handleCopyAndPay(r.upiId, r.amount)}
-                  className="btn btn--primary btn--sm"
-                  style={{ textDecoration: 'none', gap: '5px' }}
-                  title={`Pay ₹${r.amount} to ${r.upiId}`}
-                >
-                  <Smartphone size={13} /> Copy & Pay
-                </a>
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--sm"
-                  disabled={busy === `redeem-${r._id}`}
-                  onClick={() => setConfirmPay(r)}
-                  title="Mark as settled"
-                >
-                  <CheckCircle2 size={13} /> Close
-                </button>
-              </div>
+            ))}
+          </div>
+
+          {open.length > pageSize && (
+            <div className="pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', gap: '12px' }}>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                disabled={openPage === 1}
+                onClick={() => setOpenPage((p) => Math.max(p - 1, 1))}
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <span className="muted" style={{ fontSize: '13px', fontWeight: 600 }}>
+                Page {openPage} of {openTotalPages} ({open.length} total)
+              </span>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                disabled={openPage >= openTotalPages}
+                onClick={() => setOpenPage((p) => Math.min(p + 1, openTotalPages))}
+              >
+                Next <ChevronRight size={16} />
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       <h2 className="section-title">Settled</h2>
@@ -247,36 +283,62 @@ export default function Redeem() {
       ) : closed.length === 0 ? (
         <EmptyState icon="✅" title="Nothing settled yet" subtitle="Closed redeem requests will show up here." />
       ) : (
-        <div className="nb-list card">
-          {closed.map((r) => (
-            <div key={r._id} className="nb-row">
-              <div className="nb-row__icon">
-                <CheckCircle2 size={18} />
-              </div>
-              <div className="nb-row__body">
-                <div className="nb-row__text nb-row__text--muted">
-                  {formatCurrency(r.amount)}
-                  <span className="badge badge--protected">Settled</span>
+        <>
+          <div className="nb-list card">
+            {paginatedClosed.map((r) => (
+              <div key={r._id} className="nb-row">
+                <div className="nb-row__icon">
+                  <CheckCircle2 size={18} />
                 </div>
-                <div className="redeem-upi redeem-upi--muted">{r.upiId}</div>
-                {r.note && <div className="nb-row__desc">{r.note}</div>}
-                <div className="nb-row__meta">
-                  {r.createdBy?.name || '—'} • settled by {r.closedByName || r.closedBy?.name || '—'} on {formatDate(r.closedAt)}
+                <div className="nb-row__body">
+                  <div className="nb-row__text nb-row__text--muted">
+                    {formatCurrency(r.amount)}
+                    <span className="badge badge--protected">Settled</span>
+                  </div>
+                  <div className="redeem-upi redeem-upi--muted">{r.upiId}</div>
+                  {r.note && <div className="nb-row__desc">{r.note}</div>}
+                  <div className="nb-row__meta">
+                    {r.createdBy?.name || '—'} • settled by {r.closedByName || r.closedBy?.name || '—'} on {formatDate(r.closedAt)}
+                  </div>
                 </div>
-              </div>
-              <div className="nb-row__actions">
+                <div className="nb-row__actions">
                   <button type="button" className="btn btn--ghost btn--sm" disabled={busy === `redeem-${r._id}`} onClick={() => reopenItem(r)} title="Reopen">
                     <RotateCcw size={13} /> Reopen
                   </button>
                   {isAdmin && (
-                  <button type="button" className="icon-btn icon-btn--sm" onClick={() => setConfirmDelete(r)} title="Remove">
-                    <Trash2 size={15} />
-                  </button>
+                    <button type="button" className="icon-btn icon-btn--sm" onClick={() => setConfirmDelete(r)} title="Remove">
+                      <Trash2 size={15} />
+                    </button>
                   )}
                 </div>
+              </div>
+            ))}
+          </div>
+
+          {closed.length > pageSize && (
+            <div className="pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', gap: '12px' }}>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                disabled={closedPage === 1}
+                onClick={() => setClosedPage((p) => Math.max(p - 1, 1))}
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <span className="muted" style={{ fontSize: '13px', fontWeight: 600 }}>
+                Page {closedPage} of {closedTotalPages} ({closed.length} total)
+              </span>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                disabled={closedPage >= closedTotalPages}
+                onClick={() => setClosedPage((p) => Math.min(p + 1, closedTotalPages))}
+              >
+                Next <ChevronRight size={16} />
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       <BottomSheet open={showForm} onClose={() => setShowForm(false)} title="Raise Redeem Request" maxWidth={520}>

@@ -1,13 +1,11 @@
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
-import { House, Wallet, Receipt, CalendarDays, ClipboardList, ShieldCheck, Users, CalendarClock, CheckCircle2, HandCoins, FolderHeart } from 'lucide-react';
+import { House, Wallet, Receipt, CalendarDays, ClipboardList, ShieldCheck, Users, CalendarClock, CheckCircle2, HandCoins } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { greeting } from '../utils/format';
 import AnimatedGrid from './AnimatedGrid';
-import BounceCards from './BounceCards';
 import NotificationBell from './NotificationBell';
-import { PHOTO_SRC } from './SplashScreen';
 
 const NAV = [
   { to: '/dashboard', label: 'Home', icon: House },
@@ -15,7 +13,6 @@ const NAV = [
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/redeem', label: 'Redeem', icon: HandCoins },
   { to: '/chores', label: 'Schedule', icon: CalendarDays },
-  { to: '/memories', label: 'Memories', icon: FolderHeart },
   { to: '/noticeboard', label: 'Board', icon: ClipboardList },
   { to: '/calendar', label: 'Calendar', icon: CalendarClock },
   { to: '/members', label: 'Members', icon: Users }
@@ -49,7 +46,6 @@ export default function Layout() {
     '/dues': 'Dues & Payoff',
     '/print': 'Monthly Report',
     '/expenses': 'Expenses',
-    '/memories': 'Memories & Gallery',
     '/chores': 'Schedule',
     '/noticeboard': 'Noticeboard',
     '/members': 'Members',
@@ -115,10 +111,6 @@ export default function Layout() {
             <NotificationBell />
             <span style={{ fontSize: '14px', fontWeight: 700 }}>Notifications</span>
           </div>
-        </div>
-        <div className="desktop-nav__memory">
-          <BounceCards images={[{ src: PHOTO_SRC, alt: 'Sweet Home' }]} size={92} />
-          <span className="desktop-nav__memory-caption">Our Sweet Home</span>
         </div>
       </aside>
 

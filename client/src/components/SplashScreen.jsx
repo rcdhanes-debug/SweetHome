@@ -1,12 +1,9 @@
-import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { resolveMediaUrl } from '../services/api';
-
-export const PHOTO_SRC = resolveMediaUrl('/api/photo/file');
+// Photo commented out
+// export const PHOTO_SRC = resolveMediaUrl('/api/photo/file');
 
 export default function SplashScreen({ exiting }) {
   const reduced = useReducedMotion();
-  const [photoOk, setPhotoOk] = useState(true);
 
   return (
     <motion.div
@@ -18,21 +15,6 @@ export default function SplashScreen({ exiting }) {
     >
       <div className="splash__halo splash__halo--1" />
       <div className="splash__halo splash__halo--2" />
-
-      {photoOk && (
-        <motion.img
-          className="splash__photo"
-          src={PHOTO_SRC}
-          alt=""
-          initial={{ scale: reduced ? 1 : 1.18 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: reduced ? 0 : 2.6, ease: [0.25, 0.1, 0.25, 1] }}
-          onError={() => setPhotoOk(false)}
-          onLoad={(e) => {
-            if (!e.currentTarget.naturalWidth) setPhotoOk(false);
-          }}
-        />
-      )}
 
       <div className="splash__overlay" />
 
@@ -51,7 +33,7 @@ export default function SplashScreen({ exiting }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: reduced ? 0 : 0.95, duration: 0.65, ease: 'easeOut' }}
       >
-        Welcome to HomeHQ
+        Welcome 😊
       </motion.p>
     </motion.div>
   );

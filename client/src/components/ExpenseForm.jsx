@@ -3,11 +3,11 @@ import { ShoppingBasket, Zap, SprayCan, Wifi, Receipt } from 'lucide-react';
 import { CATEGORIES, CATEGORY_META } from '../constants';
 import { todayISTDateString, formatCurrency } from '../utils/format';
 
-export default function ExpenseForm({ users, initial, submitting, onSubmit, onCancel }) {
+export default function ExpenseForm({ users, initial, defaultDate, submitting, onSubmit, onCancel }) {
   const [amount, setAmount] = useState(initial?.amount ? String(initial.amount) : '');
   const [category, setCategory] = useState(initial?.category || CATEGORIES[0]);
   const [description, setDescription] = useState(initial?.description || '');
-  const [date, setDate] = useState(initial?.expenseDate ? initial.expenseDate.slice(0, 10) : todayISTDateString());
+  const [date, setDate] = useState(initial?.expenseDate ? initial.expenseDate.slice(0, 10) : (defaultDate || todayISTDateString()));
   const [paidBy, setPaidBy] = useState(initial?.paidBy?._id || '');
 
   const amountNum = Number(amount);
