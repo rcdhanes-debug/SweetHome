@@ -98,7 +98,7 @@ function extractSmsPayload(req) {
     for (const [key, val] of Object.entries(req.body)) {
       const lower = key.toLowerCase();
       if (!message && typeof val === 'string' && val.trim()) {
-        if (['content', 'message', 'text', 'body', 'msg', 'sms', 'smscontent', 'sms_content', 'smsbody', 'sms_body'].includes(lower)) {
+        if (['content', 'message', 'text', 'body', 'msg', 'sms', 'smscontent', 'sms_content', 'smsbody', 'sms_body', 'key'].includes(lower)) {
           message = val;
         }
       }
