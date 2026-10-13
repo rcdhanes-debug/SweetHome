@@ -8,6 +8,49 @@ const {
 } = require('../services/bankSmsService');
 const BankBalance = require('../models/BankBalance');
 
+// Server-Sent Events (SSE) client registry for real-time bank SMS notifications
+const sseClients = new Set();
+
+function broadcastBankUpdate(data) {
+  if (!sseClients.size) return;
+  const payload = JSON.stringify(data || {});
+  for (const client of sseClients) {
+    try {
+      client.write(`event: bank_update\ndata: ${payload}\n\n`);
+    } catch (_) {
+      sseClients.delete(client);
+    }
+  }
+}
+
+// GET /api/bank/events (Server-Sent Events stream)
+const streamBankEvents = (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+
+  res.write(':connected\n\n');
+  sseClients.add(res);
+
+  // Keep-alive heartbeat every 20 seconds to keep connection active on Render
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(':keepalive\n\n');
+    } catch (_) {
+      clearInterval(keepAlive);
+      sseClients.delete(res);
+    }
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    sseClients.delete(res);
+  });
+};
+
 /**
  * Validates optional webhook secret if configured in environment
  */
@@ -203,6 +246,9 @@ const handleSmsWebhook = asyncHandler(async (req, res) => {
     return res.status(422).json(result);
   }
 
+  // Instant real-time push to all active browser windows via SSE
+  broadcastBankUpdate(result.data);
+
   res.status(200).json(result);
 });
 
@@ -249,6 +295,10 @@ const simulateSms = asyncHandler(async (req, res) => {
     timestamp: Date.now(),
     simulated: false
   });
+
+  if (result.success) {
+    broadcastBankUpdate(result.data);
+  }
 
   res.json(result);
 });
@@ -302,6 +352,8 @@ const updateManualBalance = asyncHandler(async (req, res) => {
     { upsert: true, new: true }
   );
 
+  broadcastBankUpdate({ balance: record });
+
   res.json({ success: true, data: record });
 });
 
@@ -312,5 +364,6 @@ module.exports = {
   getBalance,
   getTransactions,
   syncBalance,
-  updateManualBalance
+  updateManualBalance,
+  streamBankEvents
 };

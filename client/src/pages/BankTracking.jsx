@@ -28,6 +28,7 @@ import { useToast } from '../context/ToastContext';
 import CountUp from '../components/CountUp';
 import Skeleton from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { useBankEvents } from '../hooks/useBankEvents';
 
 export default function BankTracking() {
   const [bankData, setBankData] = useState(null);
@@ -75,6 +76,29 @@ export default function BankTracking() {
       setLoading(false);
     }
   };
+
+  // Silent reload that updates numbers without triggering full page loading spinner
+  const silentReload = async () => {
+    try {
+      const [balRes, txnRes] = await Promise.all([
+        getBankBalance(),
+        getBankTransactions(50)
+      ]);
+      setBankData(balRes);
+      setTransactions(txnRes?.data || []);
+    } catch (_) {}
+  };
+
+  // Listen for real-time bank SMS alerts via SSE (reloads ONLY when new SMS is received)
+  useBankEvents((update) => {
+    silentReload();
+    const type = update?.parsed?.type || (update?.transaction?.type);
+    const amt = update?.parsed?.amount || (update?.transaction?.amount);
+    const to = update?.parsed?.recipient || (update?.transaction?.recipient);
+    if (amt) {
+      toast.show(`⚡ Bank SMS Received: ₹${amt.toLocaleString('en-IN')} ${type === 'DEBIT' ? 'Debited' : 'Credited'}${to ? ` (${to})` : ''}`);
+    }
+  });
 
   const handleSync = async () => {
     try {

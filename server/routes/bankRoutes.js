@@ -6,9 +6,13 @@ const {
   getBalance,
   getTransactions,
   syncBalance,
-  updateManualBalance
+  updateManualBalance,
+  streamBankEvents
 } = require('../controllers/bankController');
 const { optionalAuth, requireAuth } = require('../middleware/auth');
+
+// Real-time Event Stream (SSE) for instant browser updates when new SMS arrives
+router.get('/events', streamBankEvents);
 
 // Public Webhook Endpoints for mobile SMS Forwarder app
 // Accepts POST from SMS Forwarder apps

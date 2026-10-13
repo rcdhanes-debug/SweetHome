@@ -5,6 +5,7 @@ import { getBankBalance, syncBankBalance } from '../services/bank';
 import { formatCurrency, formatDateTime } from '../utils/format';
 import { useToast } from '../context/ToastContext';
 import CountUp from './CountUp';
+import { useBankEvents } from '../hooks/useBankEvents';
 
 export default function BankBalanceWidget() {
   const [bankData, setBankData] = useState(null);
@@ -28,6 +29,25 @@ export default function BankBalanceWidget() {
       setLoading(false);
     }
   };
+
+  // Silent reload that updates data smoothly without showing a loading spinner
+  const silentReload = async () => {
+    try {
+      const data = await getBankBalance();
+      setBankData(data);
+    } catch (_) {}
+  };
+
+  // Real-time listener: Triggers ONLY when a new bank SMS is processed
+  useBankEvents((update) => {
+    silentReload();
+    const type = update?.parsed?.type || (update?.transaction?.type);
+    const amt = update?.parsed?.amount || (update?.transaction?.amount);
+    const to = update?.parsed?.recipient || (update?.transaction?.recipient);
+    if (amt) {
+      toast.show(`⚡ Bank SMS Received: ₹${amt.toLocaleString('en-IN')} ${type === 'DEBIT' ? 'Debited' : 'Credited'}${to ? ` (${to})` : ''}`);
+    }
+  });
 
   const handleSync = async () => {
     try {
