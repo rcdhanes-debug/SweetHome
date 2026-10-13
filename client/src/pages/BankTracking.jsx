@@ -146,6 +146,8 @@ export default function BankTracking() {
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(loadData, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   // Filtered transactions

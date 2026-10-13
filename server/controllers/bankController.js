@@ -12,16 +12,31 @@ const BankBalance = require('../models/BankBalance');
  * Validates optional webhook secret if configured in environment
  */
 function isAuthorizedWebhook(req) {
-  const secret = process.env.BANK_WEBHOOK_SECRET || 'sweet_home_secure_2026';
+  // If user set BANK_WEBHOOK_SECRET in environment variables, strictly verify it
+  if (process.env.BANK_WEBHOOK_SECRET) {
+    const providedSecret =
+      req.headers['x-webhook-secret'] ||
+      req.headers['x-api-key'] ||
+      req.query.secret ||
+      req.query.token ||
+      (req.body && (req.body.secret || req.body.token));
 
-  const providedSecret =
+    return providedSecret === process.env.BANK_WEBHOOK_SECRET;
+  }
+
+  // Allow default secret or open webhook if environment variable is not explicitly configured
+  const provided =
     req.headers['x-webhook-secret'] ||
     req.headers['x-api-key'] ||
     req.query.secret ||
     req.query.token ||
     (req.body && (req.body.secret || req.body.token));
 
-  return providedSecret === secret;
+  if (provided && provided !== 'sweet_home_secure_2026') {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -94,6 +109,15 @@ const handleSmsWebhook = asyncHandler(async (req, res) => {
     return res.status(400).json({
       success: false,
       message: 'No SMS message body found in request. Expected fields: content, message, text, or raw body.'
+    });
+  }
+
+  // Gracefully handle test pings from mobile forwarding apps
+  if (/test\s*message|^test$|^ping$/i.test(message)) {
+    return res.status(200).json({
+      success: true,
+      isTest: true,
+      message: 'Test message received successfully! Webhook is active and connected.'
     });
   }
 

@@ -46,6 +46,8 @@ export default function BankBalanceWidget() {
 
   useEffect(() => {
     loadBalance();
+    const interval = setInterval(loadBalance, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const balance = bankData?.balance || 0;
