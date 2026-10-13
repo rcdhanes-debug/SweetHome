@@ -171,106 +171,6 @@ function parseBankSms(text, sender = '') {
 }
 
 /**
- * Seed realistic demo transactions for initial display if collection is empty
- */
-async function seedDemoTransactionsIfNeeded() {
-  const count = await BankTransaction.countDocuments({ bankName: BANK_NAME });
-  if (count > 0) return;
-
-  const now = Date.now();
-  const demoList = [
-    {
-      bankName: BANK_NAME,
-      accountLast4: '4321',
-      type: 'DEBIT',
-      amount: 450.00,
-      balanceAfter: 48250.00,
-      description: 'UPI / Swiggy Instamart Groceries',
-      reference: 'UPI/628391829102',
-      date: new Date(now - 2 * 3600 * 1000),
-      source: 'SMS',
-      rawMessage: 'Dear Customer, INR 450.00 debited from A/C ...4321 towards UPI/Swiggy. Avl Bal INR 48,250.00',
-      isDemo: true
-    },
-    {
-      bankName: BANK_NAME,
-      accountLast4: '4321',
-      type: 'DEBIT',
-      amount: 1199.00,
-      balanceAfter: 48700.00,
-      description: 'Airtel Broadband Wi-Fi Bill',
-      reference: 'BBPS/918237192831',
-      date: new Date(now - 14 * 3600 * 1000),
-      source: 'SMS',
-      rawMessage: 'Rs.1199.00 spent on IDFC FIRST Bank A/C ...4321 for Airtel Broadband. Avl Bal: Rs.48,700.00',
-      isDemo: true
-    },
-    {
-      bankName: BANK_NAME,
-      accountLast4: '4321',
-      type: 'CREDIT',
-      amount: 18000.00,
-      balanceAfter: 49899.00,
-      description: 'Housemates Monthly Contribution Transfer',
-      reference: 'IMPS/619283910293',
-      date: new Date(now - 2 * 24 * 3600 * 1000),
-      source: 'SMS',
-      rawMessage: 'Dear Customer, INR 18,000.00 credited to your A/C ...4321. Total Avl Bal INR 49,899.00. Ref: IMPS/619283910293',
-      isDemo: true
-    },
-    {
-      bankName: BANK_NAME,
-      accountLast4: '4321',
-      type: 'DEBIT',
-      amount: 2340.00,
-      balanceAfter: 31899.00,
-      description: 'TNEB Electricity Bill Payment',
-      reference: 'UPI/610293847561',
-      date: new Date(now - 4 * 24 * 3600 * 1000),
-      source: 'SMS',
-      rawMessage: 'Your A/C ...4321 is debited for Rs 2340.00 towards TNEB. Avl Bal: Rs 31,899.00',
-      isDemo: true
-    },
-    {
-      bankName: BANK_NAME,
-      accountLast4: '4321',
-      type: 'DEBIT',
-      amount: 120.00,
-      balanceAfter: 34239.00,
-      description: 'UPI / Chai & Snacks Shop',
-      reference: 'UPI/602938172635',
-      date: new Date(now - 5 * 24 * 3600 * 1000),
-      source: 'SMS',
-      rawMessage: 'Sent Rs.120.00 from A/C ...4321 towards Chai Shop. Avl Bal: INR 34,239.00',
-      isDemo: true
-    }
-  ];
-
-  await BankTransaction.insertMany(demoList);
-
-  const existingBal = await BankBalance.findOne({ bankName: BANK_NAME });
-  if (!existingBal || existingBal.balance === 0) {
-    await BankBalance.findOneAndUpdate(
-      { bankName: BANK_NAME },
-      {
-        bankName: BANK_NAME,
-        accountLast4: '4321',
-        balance: 48250.00,
-        currency: 'INR',
-        lastTransactionType: 'DEBIT',
-        lastTransactionAmount: 450.00,
-        syncSource: 'SMS',
-        lastSmsContent: demoList[0].rawMessage,
-        lastSyncedAt: new Date(now - 2 * 3600 * 1000),
-        lastSyncStatus: 'SUCCESS',
-        lastSyncError: ''
-      },
-      { upsert: true }
-    );
-  }
-}
-
-/**
  * Main processor for incoming SMS forwarder webhook requests
  */
 async function processBankSms({ sender = '', message = '', timestamp = null, rawPayload = {}, simulated = false }) {
@@ -310,7 +210,7 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
   }
 
   const smsDate = timestamp ? new Date(timestamp) : new Date();
-  const accountLast4 = parsed.accountLast4 || currentRecord?.accountLast4 || '4321';
+  const accountLast4 = parsed.accountLast4 || currentRecord?.accountLast4 || '****';
 
   // Update or insert BankBalance
   const updatedBalance = await BankBalance.findOneAndUpdate(
@@ -382,18 +282,19 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
  * Get current stored balance
  */
 async function getStoredBankBalance() {
-  await seedDemoTransactionsIfNeeded();
-
   let record = await BankBalance.findOne({ bankName: BANK_NAME });
   if (!record) {
     record = await BankBalance.create({
       bankName: BANK_NAME,
-      accountLast4: '4321',
-      balance: 48250.00,
+      accountLast4: '****',
+      balance: 0,
       currency: 'INR',
       syncSource: 'SMS',
+      lastTransactionType: 'UNKNOWN',
+      lastTransactionAmount: 0,
+      lastRecipient: '',
       lastSyncStatus: 'IDLE',
-      lastSyncError: 'Awaiting first SMS from mobile forwarder.'
+      lastSyncError: 'Awaiting first bank SMS alert from mobile forwarder app.'
     });
   }
   return record;
@@ -403,8 +304,6 @@ async function getStoredBankBalance() {
  * Get transaction history
  */
 async function getBankTransactions(limit = 50) {
-  await seedDemoTransactionsIfNeeded();
-
   return BankTransaction.find({ bankName: BANK_NAME })
     .sort({ date: -1 })
     .limit(limit);
@@ -415,6 +314,5 @@ module.exports = {
   parseBankSms,
   processBankSms,
   getStoredBankBalance,
-  getBankTransactions,
-  seedDemoTransactionsIfNeeded
+  getBankTransactions
 };
