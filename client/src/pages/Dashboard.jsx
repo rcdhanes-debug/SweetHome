@@ -17,6 +17,7 @@ import EmptyState from '../components/EmptyState';
 import BottomSheet from '../components/BottomSheet';
 import ConfirmModal from '../components/ConfirmModal';
 import PushNotificationBanner from '../components/PushNotificationBanner';
+import BankBalanceWidget from '../components/BankBalanceWidget';
 import { EVENT_META } from '../constants';
 import { formatCurrency, formatDate, todayDayName, deadlineInfo, todayISTDateString } from '../utils/format';
 
@@ -272,23 +273,10 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+
           </section>
 
-          <section className="card card--tint floaty floaty--1 dash-contrib">
-              <div className="card__head">
-                <h3>Contribution</h3>
-                <Users size={18} className="muted-icon" />
-              </div>
-              <div className="big-number">
-                <CountUp value={funding.paidCount} />/{funding.payments?.length || (funding.paidCount + funding.pendingCount)}
-              </div>
-              <p className="muted">
-                <CountUp value={funding.pendingCount} /> pending {funding.partialCount > 0 ? `(${funding.partialCount} partial)` : ''} • ₹{funding.contributionAmount.toLocaleString('en-IN')} each
-              </p>
-              <Link to="/collection" className="link-btn">
-                View payments <ChevronRight size={14} />
-              </Link>
-            </section>
+          <BankBalanceWidget />
 
             <section className="card card--tint floaty floaty--2 dash-expenses">
               <div className="card__head">

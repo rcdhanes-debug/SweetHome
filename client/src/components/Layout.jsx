@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
-import { House, Wallet, Receipt, CalendarDays, ClipboardList, ShieldCheck, Users, CalendarClock, CheckCircle2, HandCoins } from 'lucide-react';
+import { House, Wallet, Receipt, CalendarDays, ClipboardList, ShieldCheck, Users, CalendarClock, CheckCircle2, HandCoins, Landmark } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
@@ -12,6 +12,7 @@ const NAV = [
   { to: '/collection', label: 'Collection', icon: Wallet },
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/redeem', label: 'Redeem', icon: HandCoins },
+  { to: '/bank', label: 'Bank', icon: Landmark },
   { to: '/chores', label: 'Schedule', icon: CalendarDays },
   { to: '/noticeboard', label: 'Board', icon: ClipboardList },
   { to: '/calendar', label: 'Calendar', icon: CalendarClock },
@@ -50,6 +51,7 @@ export default function Layout() {
     '/noticeboard': 'Noticeboard',
     '/members': 'Members',
     '/calendar': 'Calendar',
+    '/bank': 'Bank Account & History',
     '/admin': 'Admin'
   };
   const title = pageTitles[location.pathname] || 'Sweet Home';

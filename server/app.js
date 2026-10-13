@@ -12,6 +12,8 @@ const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '16mb' }));
+app.use(express.urlencoded({ extended: true, limit: '16mb' }));
+app.use(express.text({ type: ['text/*', 'application/text'] }));
 if (LOG_LEVEL !== 'none') app.use(morgan(LOG_LEVEL));
 
 const BUILD_TIME = 'v1.0.1-' + Date.now();
@@ -32,6 +34,7 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 // app.use('/api/photos', express.json({ limit: '16mb' }), require('./routes/photoRoutes'));
 // app.use('/api/photo', require('./routes/photoRoutes'));
 app.use('/api/push', require('./routes/pushRoutes'));
+app.use('/api/bank', require('./routes/bankRoutes'));
 
 // Serve the built client in production.
 const clientDist = path.join(__dirname, '..', 'client', 'dist');

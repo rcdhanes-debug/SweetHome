@@ -16,6 +16,7 @@ import Calendar from './pages/Calendar';
 import Dues from './pages/Dues';
 import Print from './pages/Print';
 import Admin from './pages/Admin';
+import BankTracking from './pages/BankTracking';
 
 import UpdateBanner from './components/UpdateBanner';
 
@@ -73,6 +74,7 @@ export default function App() {
                 <Route path="/members" element={<Members />} />
                 <Route path="/calendar" element={<Calendar />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/bank" element={<BankTracking />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>
             </Routes>
