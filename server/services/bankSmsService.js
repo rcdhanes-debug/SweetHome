@@ -105,13 +105,17 @@ function parseBankSms(text, sender = '') {
     }
   }
 
-  // 5. Reference / UTR
-  const refMatch = cleanText.match(/(?:UPI\s*Ref(?:\s*no\.?)?|Ref(?:\s*no\.?|\s*id)?|Reference\s*no\.?|UTR)[:\s-]*([A-Za-z0-9_\/-]+)/i);
+  // 5. Reference / UTR / RRN
+  const refMatch = cleanText.match(/(?:UPI\s*Ref(?:\s*no\.?)?|Ref(?:\s*no\.?|\s*id)?|Reference\s*no\.?|UTR|RRN)[:\s-]*([A-Za-z0-9_\/-]+)/i);
   let reference = refMatch ? refMatch[1].trim() : '';
   if (reference.endsWith('.')) reference = reference.slice(0, -1);
 
   // 6. Payee / Beneficiary / Recipient Extraction ("To whom it was sent")
   let recipient = '';
+  // Pattern A: "; Mr Harish Ragavendar credited" (IDFC Bank debit format)
+  const idfcPeerCreditedMatch = cleanText.match(/;\s*([A-Za-z0-9\s.]{2,40}?)\s+credited\b/i);
+  // Pattern B: "; Mr Harish Ragavendar debited" (IDFC Bank credit format)
+  const idfcPeerDebitedMatch = cleanText.match(/;\s*([A-Za-z0-9\s.]{2,40}?)\s+debited\b/i);
   const paidToMatch = cleanText.match(/\b(?:paid|sent|transferred)\s+to\s+(?:VPA\s+|UPI\s+ID\s+)?([A-Za-z0-9@_./ -]{2,40})/i);
   const towardsMatch = cleanText.match(/\btowards\s+(?:UPI\/)?([A-Za-z0-9@_./ -]{2,40})/i);
   const toMatch = cleanText.match(/\bto\s+(?:VPA\s+|UPI\s+ID\s+)?(?!your|a\/c|account)([A-Za-z0-9@_./ -]{2,40})/i);
@@ -121,6 +125,7 @@ function parseBankSms(text, sender = '') {
   const byMatch = cleanText.match(/\bby\s+(Salary|IMPS|NEFT|UPI|Transfer|Refund|[A-Za-z0-9@_./ -]{2,30})/i);
 
   const candidate =
+    (type === 'DEBIT' ? idfcPeerCreditedMatch : idfcPeerDebitedMatch) ||
     paidToMatch ||
     towardsMatch ||
     (type === 'CREDIT' ? (fromMatch || byMatch) : null) ||

@@ -159,11 +159,11 @@ export default function BankTracking() {
   const setSampleSms = (type) => {
     if (type === 'DEBIT') {
       setSmsTestInput(
-        'Dear Customer, INR 450.00 debited from A/C ...4321 on 13-OCT-26 at 20:30 towards Swiggy. Avl Bal: INR 48,250.00. UPI Ref: 628391829102 - IDFC FIRST Bank'
+        'Your A/c XX4202 debited by Rs. 1.00 on 13/10/26; Mr Harish Ragavendar credited. RRN 665291914777. Available balance Rs. 224.77. Team IDFC FIRST Bank'
       );
     } else if (type === 'CREDIT') {
       setSmsTestInput(
-        'Dear Customer, INR 18,000.00 credited to your A/C ...4321 on 13-OCT-26. Total Avl Bal INR 66,250.00. Ref: IMPS/619283910293 - IDFC FIRST Bank'
+        'Your A/c XX4202 credited by Rs. 500.00 on 13/10/26; Mr Harish Ragavendar debited. RRN 665291914778. Available balance Rs. 724.77. Team IDFC FIRST Bank'
       );
     }
   };
