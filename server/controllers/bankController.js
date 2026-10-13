@@ -164,7 +164,15 @@ function extractSmsPayload(req) {
 
 // POST /api/bank/sms-webhook (also /api/bank/webhook and /api/bank/sms)
 const handleSmsWebhook = asyncHandler(async (req, res) => {
+  console.log('================== [BANK SMS WEBHOOK INCOMING] ==================');
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Query Params:', JSON.stringify(req.query));
+  console.log('Raw Body:', typeof req.body === 'object' ? JSON.stringify(req.body, null, 2) : req.body);
+
   if (!isAuthorizedWebhook(req)) {
+    console.warn('[BankWebhook Auth] ⚠️ Unauthorized request. Secret mismatch.');
+    console.log('=================================================================');
     return res.status(401).json({
       success: false,
       message: 'Unauthorized: Missing or invalid webhook secret token.'
@@ -172,14 +180,22 @@ const handleSmsWebhook = asyncHandler(async (req, res) => {
   }
 
   const { message, sender, timestamp } = extractSmsPayload(req);
+  console.log('Extracted Sender:', sender);
+  console.log('Extracted Message:', message ? `"${message}"` : '<EMPTY>');
 
   // Gracefully handle test pings or empty test requests from mobile forwarding apps
   if (!message || /test|ping|hello|check|sample/i.test(message)) {
-    console.log('[BankWebhook Test Ping] Received handshake/test ping. Replying with 200 OK.');
+    console.log('[BankWebhook Result] Handled as TEST / HANDSHAKE ping. (No bank transaction data). Replying 200 OK.');
+    console.log('=================================================================');
     return res.status(200).json({
       success: true,
       isTest: true,
-      message: 'Sweet Home Webhook is online and connected! Ready to receive real IDFC FIRST Bank SMS notifications.'
+      message: 'Sweet Home Webhook is online and connected! Ready to receive real IDFC FIRST Bank SMS notifications.',
+      receivedDebug: {
+        extractedSender: sender,
+        extractedMessage: message || '<EMPTY_PING>',
+        receivedBody: req.body
+      }
     });
   }
 
@@ -191,20 +207,41 @@ const handleSmsWebhook = asyncHandler(async (req, res) => {
     simulated: false
   });
 
+  console.log('[BankWebhook Result] Processed Bank SMS:', JSON.stringify(result, null, 2));
+  console.log('=================================================================');
+
   // If flagged as OTP / sensitive message, acknowledge with 200/discard without modifying data
   if (result.isSensitive) {
     return res.status(200).json({
       success: false,
       ignored: true,
-      message: result.message
+      message: result.message,
+      receivedDebug: {
+        extractedSender: sender,
+        isSensitive: true
+      }
     });
   }
 
   if (!result.success) {
-    return res.status(422).json(result);
+    return res.status(422).json({
+      ...result,
+      receivedDebug: {
+        extractedSender: sender,
+        extractedMessage: message,
+        receivedBody: req.body
+      }
+    });
   }
 
-  res.status(200).json(result);
+  res.status(200).json({
+    ...result,
+    receivedDebug: {
+      extractedSender: sender,
+      extractedMessage: message,
+      receivedBody: req.body
+    }
+  });
 });
 
 // GET /api/bank/sms-webhook & GET /api/bank/webhook-info
