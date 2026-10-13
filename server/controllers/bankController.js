@@ -51,40 +51,86 @@ function extractSmsPayload(req) {
   let sender = '';
   let timestamp = null;
 
+  // 1. If body is a string
   if (typeof req.body === 'string') {
-    message = req.body;
-  } else if (req.body && typeof req.body === 'object') {
-    message =
-      req.body.content ||
-      req.body.message ||
-      req.body.text ||
-      req.body.body ||
-      req.body.msg ||
-      req.body.sms ||
-      req.body.sms_body ||
-      '';
-
-    sender =
-      req.body.from ||
-      req.body.sender ||
-      req.body.phone ||
-      req.body.title ||
-      req.body.sender_name ||
-      '';
-
-    timestamp =
-      req.body.timestamp ||
-      req.body.time ||
-      req.body.date ||
-      req.body.sms_time ||
-      null;
+    try {
+      const parsed = JSON.parse(req.body);
+      if (typeof parsed === 'object' && parsed !== null) {
+        req.body = parsed;
+      } else {
+        message = req.body;
+      }
+    } catch (_) {
+      const contentMatch = req.body.match(/(?:content|message|text|body|msg)\s*[:=]\s*["']?([^"'\r\n]+)/i);
+      if (contentMatch) {
+        message = contentMatch[1];
+      } else {
+        message = req.body;
+      }
+    }
   }
 
-  if (!message && (req.query.message || req.query.content || req.query.text)) {
-    message = req.query.message || req.query.content || req.query.text;
+  // 2. If body is an object
+  if (req.body && typeof req.body === 'object') {
+    // Check all common field names (case-insensitive)
+    for (const [key, val] of Object.entries(req.body)) {
+      const lower = key.toLowerCase();
+      if (!message && typeof val === 'string' && val.trim()) {
+        if (['content', 'message', 'text', 'body', 'msg', 'sms', 'smscontent', 'sms_content', 'smsbody', 'sms_body'].includes(lower)) {
+          message = val;
+        }
+      }
+      if (!sender && typeof val === 'string' && val.trim()) {
+        if (['from', 'sender', 'phone', 'title', 'sender_name', 'number', 'address'].includes(lower)) {
+          sender = val;
+        }
+      }
+    }
+
+    // Check nested objects (e.g. data, payload, item, sms)
+    if (!message && (req.body.data || req.body.payload || req.body.item)) {
+      const inner = req.body.data || req.body.payload || req.body.item;
+      if (typeof inner === 'object' && inner !== null) {
+        for (const [k, v] of Object.entries(inner)) {
+          const lk = k.toLowerCase();
+          if (!message && typeof v === 'string' && ['content', 'message', 'text', 'body', 'msg', 'sms'].includes(lk)) {
+            message = v;
+          }
+        }
+      } else if (typeof inner === 'string') {
+        message = inner;
+      }
+    }
+
+    // Fallback: If no message extracted yet, scan all values for bank alert keywords
+    if (!message) {
+      for (const val of Object.values(req.body)) {
+        if (typeof val === 'string' && val.length > 15) {
+          if (/debited|credited|avl|bal|inr|rs|idfc/i.test(val)) {
+            message = val;
+            break;
+          }
+        }
+      }
+    }
+
+    // Fallback: Check if message was sent as a form key without value
+    if (!message) {
+      for (const key of Object.keys(req.body)) {
+        if (key.length > 20 && /debited|credited|avl|bal|inr|rs|idfc/i.test(key)) {
+          message = key;
+          break;
+        }
+      }
+    }
   }
-  if (!sender && (req.query.from || req.query.sender)) {
-    sender = req.query.from || req.query.sender;
+
+  // 3. Fallback to query parameters
+  if (!message && (req.query.message || req.query.content || req.query.text || req.query.body || req.query.msg)) {
+    message = req.query.message || req.query.content || req.query.text || req.query.body || req.query.msg;
+  }
+  if (!sender && (req.query.from || req.query.sender || req.query.phone)) {
+    sender = req.query.from || req.query.sender || req.query.phone;
   }
 
   return {
@@ -106,9 +152,12 @@ const handleSmsWebhook = asyncHandler(async (req, res) => {
   const { message, sender, timestamp } = extractSmsPayload(req);
 
   if (!message) {
+    console.warn('[BankWebhook 400] Empty message. Headers:', req.headers, 'Body:', req.body, 'Query:', req.query);
     return res.status(400).json({
       success: false,
-      message: 'No SMS message body found in request. Expected fields: content, message, text, or raw body.'
+      message: 'No SMS message body found in request. Expected fields: content, message, text, or raw body.',
+      receivedKeys: req.body && typeof req.body === 'object' ? Object.keys(req.body) : typeof req.body,
+      receivedBody: req.body
     });
   }
 
