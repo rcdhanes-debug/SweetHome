@@ -1,8 +1,9 @@
+const mongoose = require('mongoose');
 const BankBalance = require('../models/BankBalance');
 const BankTransaction = require('../models/BankTransaction');
 const User = require('../models/User');
 const FundingCycle = require('../models/FundingCycle');
-const { monthKey, istMonthRange } = require('../utils/time');
+const { monthKey, istMonthRange, safeParseDate } = require('../utils/time');
 
 const BANK_NAME = 'IDFC FIRST Bank';
 
@@ -227,7 +228,7 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
     newBalance = parsed.type === 'CREDIT' ? parsed.amount : 0;
   }
 
-  const smsDate = timestamp ? new Date(timestamp) : new Date();
+  const smsDate = safeParseDate(timestamp);
   const accountLast4 = parsed.accountLast4 || currentRecord?.accountLast4 || '****';
 
   // Update or insert BankBalance
@@ -365,7 +366,7 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
           }
 
           const defaultAdmin = (await User.findOne({ role: 'admin' })) || (await User.findOne());
-          const settlerId = defaultAdmin?._id;
+          const settlerId = (defaultAdmin && mongoose.Types.ObjectId.isValid(defaultAdmin._id)) ? defaultAdmin._id : null;
 
           if (matchedRedeem) {
             // Auto-settle open redeem request
@@ -377,35 +378,41 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
             matchedRedeem.bankTransactionRef = transactionDoc._id;
 
             // Create single expense linked to this transaction & redeem
-            const expense = await Expense.create({
-              amount: matchedRedeem.amount,
-              category: 'Misc',
-              description: matchedRedeem.note ? `Redeem: ${matchedRedeem.note}` : `Redeem payout — ${matchedRedeem.createdBy?.name || 'housemate'}`,
-              expenseDate: smsDate,
-              paidBy: settlerId || matchedRedeem.createdBy?._id,
-              createdBy: settlerId || matchedRedeem.createdBy?._id,
-              bankTransactionRef: transactionDoc._id,
-              redeemRef: matchedRedeem._id
-            });
+            const payerId = settlerId || (matchedRedeem.createdBy?._id && mongoose.Types.ObjectId.isValid(matchedRedeem.createdBy._id) ? matchedRedeem.createdBy._id : null);
+            let expenseDoc = null;
+            if (payerId) {
+              expenseDoc = await Expense.create({
+                amount: matchedRedeem.amount,
+                category: 'Misc',
+                description: matchedRedeem.note ? `Redeem: ${matchedRedeem.note}` : `Redeem payout — ${matchedRedeem.createdBy?.name || 'housemate'}`,
+                expenseDate: smsDate,
+                paidBy: payerId,
+                createdBy: payerId,
+                bankTransactionRef: transactionDoc._id,
+                redeemRef: matchedRedeem._id
+              });
+              matchedRedeem.expenseRef = expenseDoc._id;
+            }
 
-            matchedRedeem.expenseRef = expense._id;
             await matchedRedeem.save();
 
             transactionDoc.redeemRef = matchedRedeem._id;
             await transactionDoc.save();
 
-            await audit.log({
-              action: 'REDEEM_CLOSED',
-              performedBy: settlerId,
-              details: {
-                id: matchedRedeem._id,
-                amount: matchedRedeem.amount,
-                source: 'SMS',
-                autoMatched: true,
-                bankTransactionId: transactionDoc._id,
-                expenseId: expense._id
-              }
-            });
+            if (settlerId) {
+              await audit.log({
+                action: 'REDEEM_CLOSED',
+                performedBy: settlerId,
+                details: {
+                  id: matchedRedeem._id,
+                  amount: matchedRedeem.amount,
+                  source: 'SMS',
+                  autoMatched: true,
+                  bankTransactionId: transactionDoc._id,
+                  expenseId: expenseDoc?._id
+                }
+              });
+            }
 
             parsed.matchedRedeem = {
               redeemId: matchedRedeem._id,
@@ -449,7 +456,7 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
               transactionDoc.redeemRef = matchedClosed._id;
               await transactionDoc.save();
 
-              if (matchedClosed.expenseRef) {
+              if (matchedClosed.expenseRef && mongoose.Types.ObjectId.isValid(matchedClosed.expenseRef)) {
                 await Expense.findByIdAndUpdate(matchedClosed.expenseRef, {
                   bankTransactionRef: transactionDoc._id,
                   redeemRef: matchedClosed._id
@@ -473,7 +480,7 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
               if (existingManualExpense) {
                 existingManualExpense.bankTransactionRef = transactionDoc._id;
                 await existingManualExpense.save();
-              } else {
+              } else if (settlerId) {
                 // Create single expense for general bank debit (e.g. EB bill, groceries, Swiggy)
                 await Expense.create({
                   amount: parsed.amount,

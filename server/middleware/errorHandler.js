@@ -1,6 +1,9 @@
 const errorHandler = (err, req, res, next) => {
+  console.error(`[Error Handler] ${req.method} ${req.originalUrl}: ${err.name} - ${err.message}`, err);
+
   if (err.name === 'CastError') {
-    return res.status(400).json({ message: 'Invalid identifier.' });
+    const field = err.path || 'identifier';
+    return res.status(400).json({ message: `Invalid ${field}.` });
   }
   if (err.name === 'ValidationError') {
     return res.status(400).json({ message: err.message.replace(/^.*Error:\s*/, '') });
@@ -10,8 +13,8 @@ const errorHandler = (err, req, res, next) => {
   }
   const status = err.statusCode || 500;
   const message = err.isOperational ? err.message : 'Something went wrong on the server.';
-  if (status >= 500) console.error(err);
   res.status(status).json({ message });
 };
 
 module.exports = errorHandler;
+

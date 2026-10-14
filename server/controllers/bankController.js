@@ -202,9 +202,19 @@ function extractSmsPayload(req) {
   if (!sender && (req.query.from || req.query.sender || req.query.phone)) {
     sender = req.query.from || req.query.sender || req.query.phone;
   }
+  if (!timestamp && (req.query.timestamp || req.query.time || req.query.date)) {
+    timestamp = req.query.timestamp || req.query.time || req.query.date;
+  }
+
+  let cleanMsg = String(message || '').trim();
+  if (cleanMsg.includes('%')) {
+    try {
+      cleanMsg = decodeURIComponent(cleanMsg);
+    } catch (_) {}
+  }
 
   return {
-    message: String(message || '').trim(),
+    message: cleanMsg,
     sender: String(sender || 'IDFC FIRST Bank').trim(),
     timestamp
   };
@@ -212,7 +222,15 @@ function extractSmsPayload(req) {
 
 // POST /api/bank/sms-webhook (also /api/bank/webhook and /api/bank/sms)
 const handleSmsWebhook = asyncHandler(async (req, res) => {
+  console.log(`[Bank Webhook] Incoming ${req.method} request:`, {
+    query: req.query,
+    contentType: req.headers['content-type'],
+    userAgent: req.headers['user-agent'],
+    bodySummary: typeof req.body === 'object' ? JSON.stringify(req.body).slice(0, 200) : String(req.body || '').slice(0, 200)
+  });
+
   if (!isAuthorizedWebhook(req)) {
+    console.warn('[Bank Webhook] Unauthorized attempt with token:', req.query.secret || req.query.token);
     return res.status(401).json({
       success: false,
       message: 'Unauthorized: Missing or invalid webhook secret token.'
@@ -220,6 +238,7 @@ const handleSmsWebhook = asyncHandler(async (req, res) => {
   }
 
   const { message, sender, timestamp } = extractSmsPayload(req);
+  console.log('[Bank Webhook] Extracted payload:', { sender, messageLength: message?.length, timestamp });
 
   // Gracefully handle test pings or empty test requests from mobile forwarding apps
   if (!message || /test|ping|hello|check|sample/i.test(message)) {
@@ -230,13 +249,23 @@ const handleSmsWebhook = asyncHandler(async (req, res) => {
     });
   }
 
-  const result = await processBankSms({
-    sender,
-    message,
-    timestamp,
-    rawPayload: req.body,
-    simulated: false
-  });
+  let result;
+  try {
+    result = await processBankSms({
+      sender,
+      message,
+      timestamp,
+      rawPayload: req.body,
+      simulated: false
+    });
+  } catch (err) {
+    console.error('[Bank Webhook] Internal processing error in processBankSms:', err);
+    return res.status(200).json({
+      success: false,
+      error: err.message,
+      message: 'SMS received by server, but an internal error occurred while processing.'
+    });
+  }
 
   // If flagged as OTP / sensitive message, acknowledge with 200/discard without modifying data
   if (result.isSensitive) {
@@ -248,7 +277,13 @@ const handleSmsWebhook = asyncHandler(async (req, res) => {
   }
 
   if (!result.success) {
-    return res.status(422).json(result);
+    // Return 200 with clear message so mobile SMS forwarders don't repeatedly retry non-bank SMS
+    return res.status(200).json({
+      success: false,
+      ignored: true,
+      message: result.message || 'SMS received but did not match an active banking transaction.',
+      parsed: result.parsed
+    });
   }
 
   // Instant real-time push to all active browser windows via SSE

@@ -64,6 +64,54 @@ function deadlineInfo(deadlineDay = 5, now = new Date(), allPaid = false) {
   return { passed: false, allPaid: false, daysLeft, text };
 }
 
+/**
+ * Safely parses any arbitrary timestamp format (milliseconds, seconds, numeric string,
+ * ISO date string, standard date strings, Date objects) into a guaranteed valid Date.
+ * Falls back to now if parsing fails, never returns an Invalid Date.
+ */
+function safeParseDate(input) {
+  if (!input) return new Date();
+
+  if (input instanceof Date) {
+    return isNaN(input.getTime()) ? new Date() : input;
+  }
+
+  if (typeof input === 'number') {
+    if (isNaN(input) || !isFinite(input)) return new Date();
+    const ms = input < 1e11 ? input * 1000 : input;
+    const d = new Date(ms);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if (!trimmed) return new Date();
+
+    if (/^\d{9,15}$/.test(trimmed)) {
+      const num = parseInt(trimmed, 10);
+      const ms = num < 1e11 ? num * 1000 : num;
+      const d = new Date(ms);
+      if (!isNaN(d.getTime())) return d;
+    }
+
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) return d;
+
+    const slash = trimmed.replace(/\//g, '-');
+    const d2 = new Date(slash);
+    if (!isNaN(d2.getTime())) return d2;
+
+    const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (dmyMatch) {
+      const [, day, month, year, h = '0', m = '0', s = '0'] = dmyMatch;
+      const parsed = new Date(Number(year), Number(month) - 1, Number(day), Number(h), Number(m), Number(s));
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+  }
+
+  return new Date();
+}
+
 module.exports = {
   HOUSEHOLD_TZ,
   IST_OFFSET_MS,
@@ -73,5 +121,7 @@ module.exports = {
   monthLabel,
   istMonthRange,
   currentWeekday,
-  deadlineInfo
+  deadlineInfo,
+  safeParseDate
 };
+
