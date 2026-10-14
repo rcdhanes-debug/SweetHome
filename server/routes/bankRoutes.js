@@ -20,8 +20,17 @@ router.post('/sms-webhook', handleSmsWebhook);
 router.post('/webhook', handleSmsWebhook);
 router.post('/sms', handleSmsWebhook);
 
-// Check webhook status / get setup instructions
-router.get('/sms-webhook', getWebhookInfo);
+// Check webhook status / get setup instructions or process GET webhook
+const handleGetWebhook = (req, res, next) => {
+  if (req.query.message || req.query.content || req.query.text || req.query.body || req.query.msg) {
+    return handleSmsWebhook(req, res, next);
+  }
+  return getWebhookInfo(req, res, next);
+};
+
+router.get('/sms-webhook', handleGetWebhook);
+router.get('/webhook', handleGetWebhook);
+router.get('/sms', handleGetWebhook);
 router.get('/webhook-info', getWebhookInfo);
 
 // Interactive test simulation (allows testing SMS text directly from UI)

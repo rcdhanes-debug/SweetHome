@@ -3,7 +3,7 @@ import Avatar from './Avatar';
 import { formatCurrency, formatDate, formatTime } from '../utils/format';
 
 export default function PaymentCard({ payment, isAdmin, onMarkPaid, onTogglePending, busy }) {
-  const { user, paid, amount, targetAmount = 6000, dueAmount, status, paidAt, recordedBy } = payment;
+  const { user, paid, amount, targetAmount = 6000, dueAmount, status, paidAt, recordedBy, source } = payment;
   const isPaid = status === 'paid' || (amount >= targetAmount);
   const isPartial = status === 'partial' || (!isPaid && amount > 0 && amount < targetAmount);
   const remaining = dueAmount ?? Math.max(0, targetAmount - (amount || 0));
@@ -50,7 +50,13 @@ export default function PaymentCard({ payment, isAdmin, onMarkPaid, onTogglePend
           <>
             <span>{formatDate(paidAt)}</span>
             <span>{formatTime(paidAt)}</span>
-            {recordedBy && <span className="pay-card__by">by {recordedBy.name}</span>}
+            {source === 'SMS' ? (
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', fontWeight: 800 }}>
+                ⚡ Auto SMS
+              </span>
+            ) : (
+              recordedBy && <span className="pay-card__by">by {recordedBy.name}</span>
+            )}
           </>
         ) : (
           <span>Not yet paid</span>

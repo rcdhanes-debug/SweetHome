@@ -1,12 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Users, TrendingUp, ChevronRight, CalendarClock, CheckCircle2, QrCode, Smartphone, Pencil } from 'lucide-react';
-import gsap from 'gsap';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Users,
+  TrendingUp,
+  ChevronRight,
+  CheckCircle2,
+  QrCode,
+  Smartphone,
+  Pencil,
+  Building2,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Copy,
+  Sparkles,
+  Receipt
+} from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import * as fundingApi from '../services/funding';
+import { getBankBalance, syncBankBalance, getBankTransactions } from '../services/bank';
+import { useBankEvents } from '../hooks/useBankEvents';
 import { resolveMediaUrl } from '../services/api';
 import ProgressBar from '../components/ProgressBar';
 import CountUp from '../components/CountUp';
@@ -17,12 +36,10 @@ import EmptyState from '../components/EmptyState';
 import BottomSheet from '../components/BottomSheet';
 import ConfirmModal from '../components/ConfirmModal';
 import PushNotificationBanner from '../components/PushNotificationBanner';
-import BankBalanceWidget from '../components/BankBalanceWidget';
-import { EVENT_META } from '../constants';
-import { formatCurrency, formatDate, todayDayName, deadlineInfo, todayISTDateString } from '../utils/format';
+import { formatCurrency, formatDate, todayDayName, deadlineInfo } from '../utils/format';
 
 export default function Dashboard() {
-  const { funding, expenses, today, users, events, loading, reloadFunding } = useApp();
+  const { funding, expenses, today, users, loading, reloadFunding } = useApp();
   const { isAdmin, runWithAuth } = useAuth();
   const toast = useToast();
   const reduced = useReducedMotion();
@@ -33,6 +50,60 @@ export default function Dashboard() {
   const [editUpiInput, setEditUpiInput] = useState('');
   const [editQrImage, setEditQrImage] = useState(null);
   const [accountBusy, setAccountBusy] = useState(false);
+
+  // Live Bank Account Balance & Transactions State
+  const [bankData, setBankData] = useState(null);
+  const [bankTransactions, setBankTransactions] = useState([]);
+  const [bankSyncing, setBankSyncing] = useState(false);
+  const [showBalance, setShowBalance] = useState(true);
+  const [loadingTxns, setLoadingTxns] = useState(true);
+
+  const loadBank = async () => {
+    try {
+      const [data, txsRes] = await Promise.all([
+        getBankBalance(),
+        getBankTransactions(6)
+      ]);
+      setBankData(data);
+      const list = txsRes?.data || (Array.isArray(txsRes) ? txsRes : []);
+      setBankTransactions(list);
+    } catch (_) {
+    } finally {
+      setLoadingTxns(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBank();
+  }, []);
+
+  useBankEvents((update) => {
+    loadBank();
+    const type = update?.parsed?.type || update?.transaction?.type;
+    const amt = update?.parsed?.amount || update?.transaction?.amount;
+    const to = update?.parsed?.recipient || update?.transaction?.recipient;
+    if (amt) {
+      toast.show(`⚡ Bank SMS Received: ₹${amt.toLocaleString('en-IN')} ${type === 'DEBIT' ? 'Debited' : 'Credited'}${to ? ` (${to})` : ''}`);
+    }
+  });
+
+  const handleSyncBank = async () => {
+    try {
+      setBankSyncing(true);
+      const [res, txsRes] = await Promise.all([
+        syncBankBalance(),
+        getBankTransactions(6)
+      ]);
+      if (res?.data) setBankData(res.data);
+      const list = txsRes?.data || (Array.isArray(txsRes) ? txsRes : []);
+      setBankTransactions(list);
+      toast.show('✓ Live bank balance and transactions refreshed');
+    } catch (err) {
+      toast.show(err.message || 'Failed to refresh bank balance', 'error');
+    } finally {
+      setBankSyncing(false);
+    }
+  };
 
   const qrFileRef = useRef(null);
 
@@ -105,34 +176,20 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    if (reduced || loading.funding) return undefined;
-    const circles = document.querySelectorAll('.hero-deco__circle');
-    const steps = [
-      { x: -16, y: 12, duration: 9 },
-      { x: 12, y: -9, duration: 7 },
-      { x: -9, y: 7, duration: 11 }
-    ];
-    const tweens = Array.from(circles).map((el, i) =>
-      gsap.to(el, {
-        x: steps[i % steps.length].x,
-        y: steps[i % steps.length].y,
-        duration: steps[i % steps.length].duration,
-        ease: 'sine.inOut',
-        yoyo: true,
-        repeat: -1
-      })
-    );
-    return () => tweens.forEach((t) => t.kill());
-  }, [reduced, loading.funding]);
-
   const pct = funding ? Math.round((funding.totalCollected / funding.targetAmount) * 100) : 0;
-  const recent = expenses.slice(0, 3);
+  const recent = bankTransactions.length > 0
+    ? bankTransactions.slice(0, 4)
+    : expenses.slice(0, 3).map((e) => ({
+        _id: e._id,
+        type: 'DEBIT',
+        amount: e.amount,
+        description: e.description || e.category,
+        recipient: e.paidBy?.name,
+        date: e.expenseDate || e.createdAt,
+        source: 'MANUAL',
+        category: e.category
+      }));
   const deadline = deadlineInfo();
-  const upcoming = events
-    .filter((e) => e.date >= todayISTDateString())
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 3);
 
   return (
     <div className="page">
@@ -145,233 +202,346 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="dashboard-grid">
-          <section className="hero-card dash-hero">
-            <div className="hero-card__top">
-              <span className="hero-card__label">
-                <span className="live-dot" /> AVAILABLE BALANCE
-              </span>
-              {isAdmin && <span className="badge badge--admin">Admin mode</span>}
-            </div>
-            <div className="hero-card__amount">
-              <CountUp value={funding.balance} format={formatCurrency} duration={1100} />
+          {/* Primary Bank Account Hero Card */}
+          <section className="dash-hero dash-card-neat">
+            <div className="dash-card__header">
+              <div className="dash-card__title-lockup">
+                <div className="dash-card__icon-box dash-card__icon-box--blue">
+                  <Building2 size={16} />
+                </div>
+                <div>
+                  <div className="dash-card__title">
+                    <span>{bankData?.bankName || 'IDFC FIRST Bank'}</span>
+                    <span className="dash-live-badge">
+                      <span className="dash-live-dot" /> LIVE
+                    </span>
+                  </div>
+                  <div className="dash-card__subtitle">
+                    A/C •••• {bankData?.accountLast4 || '4202'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="dash-card__actions">
+                <button
+                  type="button"
+                  className="dash-icon-btn"
+                  onClick={() => setShowBalance(!showBalance)}
+                  title={showBalance ? 'Hide balance' : 'Show balance'}
+                >
+                  {showBalance ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+                <button
+                  type="button"
+                  className="dash-icon-btn"
+                  onClick={handleSyncBank}
+                  disabled={bankSyncing}
+                  title="Refresh live bank balance"
+                >
+                  <RefreshCw size={14} className={bankSyncing ? 'spin' : ''} />
+                </button>
+                {isAdmin && <span className="badge badge--admin" style={{ marginLeft: '2px', fontSize: '10px', padding: '1px 5px' }}>Admin</span>}
+              </div>
             </div>
 
-            {(funding.rolloverBalance > 0 || funding.isCustomRollover) && (
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'rgba(255, 255, 255, 0.14)',
-                border: '1px solid rgba(255, 255, 255, 0.22)',
-                padding: '4px 10px',
-                borderRadius: '999px',
-                fontSize: '12px',
-                fontWeight: 700,
-                color: '#fff',
-                marginBottom: '4px',
-                width: 'fit-content'
-              }}>
-                ✨ {formatCurrency(funding.rolloverBalance || 0)} carried over {funding.isCustomRollover ? '(Admin Set)' : 'from last month'}
+            <div className="dash-card__body">
+              <div className="dash-card__eyebrow">PRIMARY ACCOUNT BALANCE</div>
+              <div className="dash-card__balance">
+                {showBalance ? (
+                  <CountUp value={bankData?.balance ?? funding.balance} format={formatCurrency} duration={1000} />
+                ) : (
+                  <span>••••••••</span>
+                )}
               </div>
-            )}
+            </div>
 
-            <div className="hero-card__breakdown" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
-              <div>
-                <span className="dot" style={{ background: '#f59e0b' }} />
-                Rollover: <strong><CountUp value={funding.rolloverBalance || 0} format={formatCurrency} duration={1100} /></strong>
+            <div className={`dash-hero__stats ${funding.rolloverBalance > 0 ? 'dash-hero__stats--3col' : ''}`}>
+              <div className="dash-stat">
+                <span className="dash-stat__label">Collected</span>
+                <span className="dash-stat__val dash-stat__val--green">
+                  <CountUp value={funding.totalCollected} format={formatCurrency} duration={1000} />
+                </span>
               </div>
-              <div>
-                <span className="dot dot--green" />
-                Collected: <strong><CountUp value={funding.totalCollected} format={formatCurrency} duration={1100} /></strong>
+              <div className="dash-stat">
+                <span className="dash-stat__label">Spent</span>
+                <span className="dash-stat__val dash-stat__val--red">
+                  <CountUp value={funding.totalSpent} format={formatCurrency} duration={1000} />
+                </span>
               </div>
-              <div>
-                <span className="dot dot--red" />
-                Spent: <strong><CountUp value={funding.totalSpent} format={formatCurrency} duration={1100} /></strong>
-              </div>
+              {funding.rolloverBalance > 0 && (
+                <div className="dash-stat">
+                  <span className="dash-stat__label">Rollover</span>
+                  <span className="dash-stat__val dash-stat__val--amber">
+                    <CountUp value={funding.rolloverBalance} format={formatCurrency} duration={1000} />
+                  </span>
+                </div>
+              )}
             </div>
           </section>
 
-          <section className="card dash-fund">
-            <div className="card__head">
-              <div>
-                <h3>Monthly Fund</h3>
-                <p className="muted">
-                  <CountUp value={funding.totalCollected} format={formatCurrency} /> of <CountUp value={funding.targetAmount} format={formatCurrency} /> • <CountUp value={pct} format={(n) => `${Math.round(n)}%`} /> Collected
-                </p>
+          <section className="card dash-fund dash-card-neat">
+            <div className="dash-card__header">
+              <div className="dash-card__title-lockup">
+                <div className="dash-card__icon-box dash-card__icon-box--indigo">
+                  <Users size={16} />
+                </div>
+                <div>
+                  <div className="dash-card__title">Monthly Fund</div>
+                  <div className="dash-card__subtitle">
+                    <CountUp value={pct} format={(n) => `${Math.round(n)}%`} /> Collected
+                  </div>
+                </div>
               </div>
               <Link to="/collection" className="link-btn">
-                Details <ArrowRight size={14} />
+                Details <ArrowRight size={13} />
               </Link>
             </div>
-            <ProgressBar value={funding.totalCollected} max={funding.targetAmount} />
-            <div className="card__foot">
-              <span className={funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? 'text-success' : (deadline.passed ? 'text-danger' : '')}>
-                {funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? '🎉 All paid!' : deadline.text}
-              </span>
-              <span>
+
+            <div className="dash-card__body">
+              <div className="dash-card__progress-target">
+                <span className="dash-card__collected-amt">
+                  <CountUp value={funding.totalCollected} format={formatCurrency} />
+                </span>
+                <span className="dash-card__target-amt">
+                  / {formatCurrency(funding.targetAmount)}
+                </span>
+              </div>
+              <ProgressBar value={funding.totalCollected} max={funding.targetAmount} />
+            </div>
+
+            <div className="dash-card__footer">
+              <span className="dash-stat__label" style={{ fontWeight: 600, color: '#e2e8f0' }}>
                 <CountUp value={funding.paidCount} />/{funding.paidCount + funding.pendingCount} paid
+              </span>
+              <span className={`dash-status-pill ${funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? 'dash-status-pill--success' : (deadline.passed ? 'dash-status-pill--danger' : '')}`}>
+                {funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? '🎉 All paid' : deadline.text}
               </span>
             </div>
           </section>
 
-          <section className="card dash-qr">
-            <div className="card__head">
-              <h3>
-                <QrCode size={16} /> Common House Account
-              </h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="badge badge--today">Active</span>
+          <section className="card dash-qr dash-card-neat">
+            <div className="dash-card__header">
+              <div className="dash-card__title-lockup">
+                <div className="dash-card__icon-box dash-card__icon-box--purple">
+                  <QrCode size={16} />
+                </div>
+                <div>
+                  <div className="dash-card__title">House UPI & QR</div>
+                  <div className="dash-card__subtitle">Instant house payments</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="badge badge--today" style={{ fontSize: '10px', padding: '1px 6px' }}>Active</span>
                 {isAdmin && (
                   <button
                     type="button"
                     className="btn btn--ghost btn--sm"
                     onClick={openEditAccount}
                     title="Edit Common Account & QR Code"
+                    style={{ padding: '2px 7px', fontSize: '11px', height: '24px' }}
                   >
-                    <Pencil size={13} /> Edit
+                    <Pencil size={11} /> Edit
                   </button>
                 )}
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '8px' }}>
+
+            <div className="dash-card__body dash-qr__body">
               <div
                 onClick={() => setQrModal(true)}
-                style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '14px',
-                  overflow: 'hidden',
-                  border: '1px solid var(--border)',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  background: '#000'
-                }}
+                className="dash-qr__thumb"
                 title="Tap to view full QR code"
               >
                 <img
                   src={resolveMediaUrl(commonQr)}
                   alt="Sweet Home UPI QR Code"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  UPI ID (Common Account)
-                </div>
-                <div className="redeem-upi" style={{ fontSize: '15px', fontWeight: 800, margin: '2px 0 8px' }}>
-                  {commonUpi}
-                </div>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <a
-                    href="intent://pay#Intent;scheme=upi;end"
-                    onClick={copyAndOpenGPay}
-                    className="btn btn--primary btn--sm"
-                    style={{ textDecoration: 'none', gap: '4px' }}
+              <div className="dash-qr__info">
+                <div className="dash-card__eyebrow">UPI ID</div>
+                <div className="dash-upi-copy-row">
+                  <span className="dash-upi-text" title={commonUpi}>{commonUpi}</span>
+                  <button
+                    type="button"
+                    onClick={copyUpi}
+                    className="dash-upi-copy-btn"
+                    title="Copy UPI ID"
                   >
-                    <Smartphone size={13} /> Copy & Pay
-                  </a>
+                    {copiedUpi ? <CheckCircle2 size={13} style={{ color: '#34d399' }} /> : <Copy size={13} />}
+                  </button>
                 </div>
               </div>
             </div>
 
+            <div className="dash-card__footer" style={{ borderTop: 'none', paddingTop: 0 }}>
+              <a
+                href="intent://pay#Intent;scheme=upi;end"
+                onClick={copyAndOpenGPay}
+                className="dash-pay-btn"
+              >
+                <Smartphone size={13} /> Pay via UPI
+              </a>
+            </div>
           </section>
 
-          <BankBalanceWidget />
-
-            <section className="card card--tint floaty floaty--2 dash-expenses">
-              <div className="card__head">
-                <h3>Expenses</h3>
-                <TrendingUp size={18} className="muted-icon" />
+          <section className="card card--tint floaty floaty--2 dash-expenses dash-card-neat">
+            <div className="dash-card__header">
+              <div className="dash-card__title-lockup">
+                <div className="dash-card__icon-box dash-card__icon-box--amber">
+                  <TrendingUp size={16} />
+                </div>
+                <div>
+                  <div className="dash-card__title">Expenses</div>
+                  <div className="dash-card__subtitle">Spent this month</div>
+                </div>
               </div>
-              <div className="big-number">
+              <Link to="/expenses" className="link-btn">
+                Ledger <ChevronRight size={13} />
+              </Link>
+            </div>
+
+            <div className="dash-card__body">
+              <div className="dash-card__balance dash-card__balance--expense">
                 <CountUp value={funding.totalSpent} format={formatCurrency} />
               </div>
-              <p className="muted">spent this month</p>
-              <Link to="/expenses" className="link-btn">
-                View ledger <ChevronRight size={14} />
-              </Link>
-            </section>
+            </div>
 
-          <section className="card dash-duties">
-            <div className="card__head">
-              <h3>
-                Today's Duties <span className="badge badge--today">{todayDayName()}</span>
-              </h3>
-              <Link to="/chores" className="link-btn">
-                Schedule <ArrowRight size={14} />
+            <div className="dash-card__footer">
+              <span className="muted" style={{ fontSize: '11px' }}>Auto bank tracking</span>
+              <Link to="/expenses" className="link-btn" style={{ fontSize: '12px' }}>
+                View all →
               </Link>
             </div>
-            {loading.chores || !today ? (
-              <Skeleton height={120} />
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                <DutyBlock role="cooking" members={today.cooking} />
-                <DutyBlock role="cleaning" members={today.cleaning} />
-                <DutyBlock role="homeClean" members={today.homeClean ? [today.homeClean] : []} />
-              </div>
-            )}
           </section>
 
-          <section className="card dash-recent">
-            <div className="card__head">
-              <h3>Recent Expenses</h3>
-              <Link to="/expenses" className="link-btn">
-                All <ArrowRight size={14} />
+          <section className="card dash-duties dash-card-neat">
+            <div className="dash-card__header">
+              <div className="dash-card__title-lockup">
+                <div className="dash-card__icon-box dash-card__icon-box--green">
+                  <Sparkles size={16} />
+                </div>
+                <div>
+                  <div className="dash-card__title">
+                    <span>Today's Duties</span>
+                    <span className="badge badge--today" style={{ fontSize: '10px', padding: '1px 6px' }}>{todayDayName()}</span>
+                  </div>
+                  <div className="dash-card__subtitle">Daily chore assignments</div>
+                </div>
+              </div>
+              <Link to="/chores" className="link-btn">
+                Schedule <ArrowRight size={13} />
               </Link>
             </div>
-            {loading.expenses ? (
-              <div className="stack">
-                <Skeleton height={52} />
-                <Skeleton height={52} />
+
+            <div className="dash-card__body" style={{ margin: '6px 0 0' }}>
+              {loading.chores || !today ? (
+                <Skeleton height={110} />
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                  <DutyBlock role="cooking" members={today.cooking} />
+                  <DutyBlock role="cleaning" members={today.cleaning} />
+                  <DutyBlock role="homeClean" members={today.homeClean ? [today.homeClean] : []} />
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="card dash-recent dash-card-neat">
+            <div className="dash-card__header">
+              <div className="dash-card__title-lockup">
+                <div className="dash-card__icon-box dash-card__icon-box--amber">
+                  <Receipt size={16} />
+                </div>
+                <div>
+                  <div className="dash-card__title">Recent Transactions</div>
+                  <div className="dash-card__subtitle">Latest bank & house activity</div>
+                </div>
               </div>
-            ) : recent.length === 0 ? (
-              <EmptyState icon="🧾" title="No expenses yet" subtitle="Add the first expense of the month." />
-            ) : (
-              <div className="mini-ledger">
-                {recent.map((e) => (
-                  <div key={e._id} className="mini-ledger__row">
-                    <CategoryIcon category={e.category} size={16} />
-                    <div className="mini-ledger__body">
-                      <div className="mini-ledger__cat">{e.description || e.category}</div>
-                      <div className="mini-ledger__meta">
-                        {e.description ? `${e.category} • ` : ''}{e.paidBy?.name} • {formatDate(e.expenseDate)}
+              <Link to="/expenses" className="link-btn">
+                All Transactions <ArrowRight size={13} />
+              </Link>
+            </div>
+
+            <div className="dash-card__body" style={{ margin: '4px 0 0' }}>
+              {loadingTxns && loading.expenses ? (
+                <div className="stack" style={{ gap: '8px' }}>
+                  <Skeleton height={46} />
+                  <Skeleton height={46} />
+                </div>
+              ) : recent.length === 0 ? (
+                <EmptyState icon="🧾" title="No transactions yet" subtitle="Sync bank SMS or add an expense to see activity." />
+              ) : (
+                <div className="mini-ledger" style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  {recent.map((t) => (
+                    <div
+                      key={t._id}
+                      className="mini-ledger__row"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid rgba(255, 255, 255, 0.06)'
+                      }}
+                    >
+                      {t.type === 'CREDIT' ? (
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            color: '#34d399',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <ArrowDownLeft size={16} />
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            color: '#f87171',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <ArrowUpRight size={16} />
+                        </div>
+                      )}
+                      <div className="mini-ledger__body">
+                        <div className="mini-ledger__cat" style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>
+                          {t.description || t.recipient || (t.type === 'CREDIT' ? 'Credit Received' : 'UPI Payment')}
+                        </div>
+                        <div className="mini-ledger__meta">
+                          {formatDate(t.date || t.createdAt)} {t.source ? `• ${t.source}` : ''}{t.recipient && t.recipient !== t.description ? ` • ${t.recipient}` : ''}
+                        </div>
+                      </div>
+                      <div
+                        className="mini-ledger__amt"
+                        style={{
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          color: t.type === 'CREDIT' ? '#34d399' : '#f87171'
+                        }}
+                      >
+                        {t.type === 'CREDIT' ? '+' : '-'} {formatCurrency(t.amount)}
                       </div>
                     </div>
-                    <div className="mini-ledger__amt">{formatCurrency(e.amount)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="card dash-upcoming">
-            <div className="card__head">
-              <h3>
-                <CalendarClock size={16} /> Upcoming
-              </h3>
-              <Link to="/calendar" className="link-btn">
-                Calendar <ArrowRight size={14} />
-              </Link>
+                  ))}
+                </div>
+              )}
             </div>
-            {loading.events ? (
-              <Skeleton height={70} />
-            ) : upcoming.length === 0 ? (
-              <EmptyState icon="🗓️" title="Nothing scheduled" subtitle="Add events in the Calendar." />
-            ) : (
-              <div className="mini-events">
-                {upcoming.map((e) => (
-                  <Link key={e._id} to="/calendar" className="mini-event">
-                    <span className="mini-event__icon" style={{ color: EVENT_META[e.type]?.color }}>
-                      {EVENT_META[e.type]?.icon}
-                    </span>
-                    <div className="mini-event__body">
-                      <div className="mini-event__title">{e.title}</div>
-                      <div className="mini-event__date">{e.date}</div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
           </section>
         </div>
       )}

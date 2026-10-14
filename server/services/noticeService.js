@@ -5,6 +5,14 @@ const Resolution = require('../models/Resolution');
 const AppError = require('../utils/AppError');
 
 async function getBoard() {
+  // Auto-delete shopping items marked as bought after 1 day (24 hours)
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  try {
+    await ShoppingItem.deleteMany({ checked: true, checkedAt: { $lt: oneDayAgo } });
+  } catch (cleanErr) {
+    console.error('Error cleaning up expired shopping items:', cleanErr);
+  }
+
   const [shopping, fixes, guests, resolutions] = await Promise.all([
     ShoppingItem.find().sort({ createdAt: -1 }).populate('createdBy', 'name').populate('checkedBy', 'name'),
     FixTicket.find().sort({ createdAt: -1 }).populate('createdBy', 'name').populate('resolvedBy', 'name'),

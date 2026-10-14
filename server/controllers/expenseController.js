@@ -24,6 +24,37 @@ const create = asyncHandler(async (req, res) => {
 
   const expense = await expenses.createExpense({ ...body, createdBy: userId });
 
+  // Also log into BankTransaction so the ledger reflects this manual expense
+  try {
+    const BankTransaction = require('../models/BankTransaction');
+    const BankBalance = require('../models/BankBalance');
+    const curBal = await BankBalance.findOne({ bankName: 'IDFC FIRST Bank' });
+    const newBal = curBal ? Math.max(0, curBal.balance - expense.amount) : 0;
+    if (curBal) {
+      curBal.balance = newBal;
+      curBal.lastTransactionType = 'DEBIT';
+      curBal.lastTransactionAmount = expense.amount;
+      curBal.lastRecipient = expense.description || expense.category;
+      curBal.syncSource = 'MANUAL';
+      curBal.lastSyncedAt = expense.expenseDate || new Date();
+      await curBal.save();
+    }
+    await BankTransaction.create({
+      bankName: 'IDFC FIRST Bank',
+      accountLast4: curBal?.accountLast4 || '4202',
+      type: 'DEBIT',
+      amount: expense.amount,
+      balanceAfter: newBal,
+      recipient: expense.description || expense.category,
+      description: `Manual: ${expense.description || expense.category}`,
+      reference: 'MANUAL',
+      date: expense.expenseDate || new Date(),
+      source: 'MANUAL'
+    });
+  } catch (tErr) {
+    console.error('Failed to create manual BankTransaction:', tErr);
+  }
+
   await audit.log({
     action: 'EXPENSE_CREATED',
     performedBy: userId,

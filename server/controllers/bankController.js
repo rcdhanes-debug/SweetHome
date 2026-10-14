@@ -150,6 +150,11 @@ function extractSmsPayload(req) {
           sender = val;
         }
       }
+      if (!timestamp && val) {
+        if (['timestamp', 'sentstamp', 'receivedstamp', 'date', 'time', 'datetime'].includes(lower)) {
+          timestamp = val;
+        }
+      }
     }
 
     // Check nested objects (e.g. data, payload, item, sms)
@@ -271,8 +276,10 @@ const getWebhookInfo = asyncHandler(async (req, res) => {
       'Zero Telegram message transmission for bank data'
     ],
     instructions: {
-      androidApp: 'SMS Forwarder',
-      recommendedRule: 'Filter: Sender contains IDFC | Exclude: OTP, verification, password',
+      androidApp: 'Auto Forward SMS (Free on Google Play Store)',
+      recommendedRule: 'Filter: Sender contains IDFC | Target: POST to Webhook URL',
+      securityFilter: 'Exclude keywords: OTP, verification, password, pin',
+      methodsSupported: ['POST (JSON / Form / Raw Text)', 'GET (Query parameters)'],
       expectedPayload: {
         from: 'VK-IDFCFB',
         content: 'Dear Customer, INR 450.00 debited from A/C ...4321 on 13-OCT-26 towards UPI/Swiggy. Avl Bal: INR 48,250.00.',
@@ -315,8 +322,9 @@ const getBalance = asyncHandler(async (req, res) => {
 
 // GET /api/bank/transactions
 const getTransactions = asyncHandler(async (req, res) => {
-  const limit = parseInt(req.query.limit, 10) || 50;
-  const transactions = await getBankTransactions(limit);
+  const limit = parseInt(req.query.limit, 10) || 100;
+  const month = req.query.month || null;
+  const transactions = await getBankTransactions(limit, month);
   res.json({
     success: true,
     count: transactions.length,

@@ -4,7 +4,6 @@ import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { greeting } from '../utils/format';
-import AnimatedGrid from './AnimatedGrid';
 import NotificationBell from './NotificationBell';
 
 const NAV = [
@@ -12,7 +11,6 @@ const NAV = [
   { to: '/collection', label: 'Collection', icon: Wallet },
   { to: '/expenses', label: 'Expenses', icon: Receipt },
   { to: '/redeem', label: 'Redeem', icon: HandCoins },
-  { to: '/bank', label: 'Bank', icon: Landmark },
   { to: '/chores', label: 'Schedule', icon: CalendarDays },
   { to: '/noticeboard', label: 'Board', icon: ClipboardList },
   { to: '/calendar', label: 'Calendar', icon: CalendarClock },
@@ -76,7 +74,6 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <AnimatedGrid />
       <div className="bg-orbs" aria-hidden="true">
         <span className="orb orb--1" />
         <span className="orb orb--2" />

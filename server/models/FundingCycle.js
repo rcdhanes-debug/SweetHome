@@ -6,7 +6,8 @@ const paymentSchema = new mongoose.Schema(
     paid: { type: Boolean, default: false },
     amount: { type: Number, required: true },
     paidAt: { type: Date, default: null },
-    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    source: { type: String, enum: ['SMS', 'MANUAL'], default: 'MANUAL' }
   },
   { _id: false }
 );

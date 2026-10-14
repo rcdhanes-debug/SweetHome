@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Building2, 
-  RefreshCw, 
-  ArrowLeft, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  Search, 
-  CheckCircle2, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  Building2,
+  RefreshCw,
+  ArrowLeft,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Search,
+  CheckCircle2,
+  TrendingUp,
+  TrendingDown,
   History,
   CreditCard,
   ChevronLeft,
@@ -39,10 +39,12 @@ export default function BankTracking() {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  
+
   // SMS Webhook Simulator & Setup State
   const [showWebhookGuide, setShowWebhookGuide] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedJson, setCopiedJson] = useState(false);
+  const [copiedGet, setCopiedGet] = useState(false);
   const [smsTestInput, setSmsTestInput] = useState('');
   const [simulating, setSimulating] = useState(false);
 
@@ -51,10 +53,19 @@ export default function BankTracking() {
   // Default to live Render backend link or current origin in full-stack deployment
   const backendBase = (import.meta.env.VITE_API_URL || '').startsWith('http')
     ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '')
-    : (window.location.hostname === 'localhost' 
-        ? 'https://sweet-home-backend-y21s.onrender.com' 
-        : window.location.origin);
+    : (window.location.hostname === 'localhost'
+      ? 'https://sweet-home-backend-y21s.onrender.com'
+      : window.location.origin);
   const webhookUrl = `${backendBase}/api/bank/sms-webhook?secret=sweet_home_secure_2026`;
+  const macroDroidGetUrl = `${webhookUrl}&sender=[sms_number]&message=[sms_message]`;
+  const macroDroidJson = JSON.stringify(
+    {
+      sender: '[sms_number]',
+      message: '[sms_message]'
+    },
+    null,
+    2
+  );
 
   useEffect(() => {
     setPage(1);
@@ -86,7 +97,7 @@ export default function BankTracking() {
       ]);
       setBankData(balRes);
       setTransactions(txnRes?.data || []);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   // Listen for real-time bank SMS alerts via SSE (reloads ONLY when new SMS is received)
@@ -123,6 +134,28 @@ export default function BankTracking() {
       setCopiedUrl(true);
       toast.show('✓ Webhook URL copied to clipboard!');
       setTimeout(() => setCopiedUrl(false), 2500);
+    } catch (_) {
+      toast.show('Could not copy automatically. Please select and copy.', 'info');
+    }
+  };
+
+  const handleCopyJson = async () => {
+    try {
+      await navigator.clipboard.writeText(macroDroidJson);
+      setCopiedJson(true);
+      toast.show('✓ MacroDroid JSON body copied!');
+      setTimeout(() => setCopiedJson(false), 2500);
+    } catch (_) {
+      toast.show('Could not copy automatically. Please select and copy.', 'info');
+    }
+  };
+
+  const handleCopyGet = async () => {
+    try {
+      await navigator.clipboard.writeText(macroDroidGetUrl);
+      setCopiedGet(true);
+      toast.show('✓ MacroDroid GET URL copied!');
+      setTimeout(() => setCopiedGet(false), 2500);
     } catch (_) {
       toast.show('Could not copy automatically. Please select and copy.', 'info');
     }
@@ -239,37 +272,42 @@ export default function BankTracking() {
               </div>
               <div>
                 <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text)' }}>
-                  SMS Forwarder Webhook Setup
+                  Bank SMS Forwarding Setup (via Auto Forward SMS)
                 </h4>
                 <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
-                  Forward real-time bank SMS alerts from your mobile phone
+                  Forward real-time bank SMS alerts automatically using the free Auto Forward SMS app from Play Store
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Webhook URL copy box */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '6px' }}>
-              Target Webhook URL
-            </label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <input
-                type="text"
-                readOnly
-                value={webhookUrl}
-                className="text-input"
-                style={{ fontFamily: 'monospace', fontSize: '12px', height: '36px', background: 'rgba(0,0,0,0.25)', flex: 1 }}
-              />
-              <button
-                type="button"
-                className="btn btn--primary btn--sm"
-                onClick={handleCopyUrl}
-                style={{ gap: '6px', whiteSpace: 'nowrap', height: '36px', padding: '0 12px' }}
-              >
-                {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
-                {copiedUrl ? 'Copied' : 'Copy URL'}
-              </button>
+          {/* Webhook URLs & Quick Copy Bar */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', marginBottom: '16px' }}>
+            {/* Standard Webhook URL */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)' }}>
+                  Target Webhook URL (POST / GET)
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  readOnly
+                  value={webhookUrl}
+                  className="text-input"
+                  style={{ fontFamily: 'monospace', fontSize: '11.5px', height: '36px', background: 'rgba(0,0,0,0.25)', flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn btn--primary btn--sm"
+                  onClick={handleCopyUrl}
+                  style={{ gap: '6px', whiteSpace: 'nowrap', height: '36px', padding: '0 12px' }}
+                >
+                  {copiedUrl ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedUrl ? 'Copied' : 'Copy URL'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -283,22 +321,46 @@ export default function BankTracking() {
               <div style={{ fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.75)', marginTop: '2px', lineHeight: '1.5' }}>
                 • <b>Secret Token Protected:</b> Webhook requires authentication token (embedded in the URL).<br />
                 • <b>Automatic OTP Gatekeeper:</b> All OTPs, login PINs, passwords, and verification codes are automatically dropped.<br />
-                • <b>Private:</b> Bank updates remain strictly inside the app. No Telegram alerts are sent.
+                • <b>Private:</b> Bank updates remain strictly inside your Sweet Home dashboard.
               </div>
             </div>
           </div>
 
-          {/* Setup Instructions */}
+          {/* Setup Instructions for Auto Forward SMS */}
           <div style={guideStepsBoxStyle}>
-            <div style={{ fontSize: '12.5px', fontWeight: 700, marginBottom: '6px', color: 'var(--text)' }}>
-              📱 Mobile App Configuration (SMS Forwarder / Tasker / MacroDroid):
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>
+                📱 Configuration for <b>Auto Forward SMS</b> (Google Play Store):
+              </div>
+              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', fontWeight: 700 }}>
+                Free Play Store App
+              </span>
             </div>
             <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: 'var(--muted)', lineHeight: '1.8' }}>
-              <li>Install <b>SMS Forwarder</b> (or any SMS auto-forward webhook app) on your Android device.</li>
-              <li><b>Include Rule:</b> Filter where Sender contains <b>"IDFC"</b> (matches <code>IDFCFB</code>, <code>VK-IDFCFB</code>).</li>
-              <li><b>Exclude Rule (Recommended):</b> Set exclude keywords: <code>OTP, verification, password, code</code>.</li>
-              <li><b>Webhook Action:</b> Method <b>POST</b> with the copied URL above (contains your secret token).</li>
-              <li><b>Request Body:</b> JSON with fields <code>content</code> (or <code>message</code>) and <code>from</code>.</li>
+              <li>
+                Open <b>Auto Forward SMS</b> on your Android phone and grant the required SMS & notification permissions.
+              </li>
+              <li>
+                Tap <b>Add Rule</b> (or <b>+</b> button) to create a new forwarding filter.
+              </li>
+              <li>
+                <b>Filter / Trigger:</b> Set <b>Sender contains:</b> <code>IDFC</code> (matches <code>IDFCFB</code>, <code>VK-IDFCFB</code>).
+              </li>
+              <li>
+                <b>Exclude Filter (Security):</b> Add exclude keywords: <code>OTP, verification, password</code> so sensitive login messages are never forwarded.
+              </li>
+              <li>
+                <b>Forward Destination:</b> Select <b>Webhook / URL</b> (or <b>HTTP POST</b>).
+              </li>
+              <li>
+                <b>URL:</b> Paste the <b>Target Webhook URL</b> copied above (contains your secret key).
+              </li>
+              <li>
+                <b>Format / Body:</b> Select <b>JSON</b> (or Default parameters). Sweet Home automatically accepts <code>content</code>, <code>message</code>, <code>text</code>, <code>from</code>, <code>sender</code>, and <code>timestamp</code>.
+              </li>
+              <li>
+                Save the rule and ensure the background service is running. As soon as IDFC sends a debit or credit SMS, Sweet Home will update your balance live!
+              </li>
             </ol>
           </div>
 

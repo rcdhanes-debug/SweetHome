@@ -1,5 +1,8 @@
 const BankBalance = require('../models/BankBalance');
 const BankTransaction = require('../models/BankTransaction');
+const User = require('../models/User');
+const FundingCycle = require('../models/FundingCycle');
+const { monthKey, istMonthRange } = require('../utils/time');
 
 const BANK_NAME = 'IDFC FIRST Bank';
 
@@ -48,10 +51,20 @@ function parseBankSms(text, sender = '') {
 
   // 1. Transaction Type (DEBIT vs CREDIT)
   let type = 'UNKNOWN';
-  if (/\b(?:debited|debit|withdrawn|spent|sent|paid|transferred|purchased)\b/i.test(cleanText)) {
+  if (
+    /(?:A\/c|Account|Acct|Card)[^.;]*\bcredited\b/i.test(cleanText) ||
+    /\b(?:credited\s*(?:to|by|for)|deposited|received\s*in|refunded)\b/i.test(cleanText)
+  ) {
+    type = 'CREDIT';
+  } else if (
+    /(?:A\/c|Account|Acct|Card)[^.;]*\bdebited\b/i.test(cleanText) ||
+    /\b(?:debited\s*(?:from|by|for)|withdrawn|spent|transferred|purchased)\b/i.test(cleanText)
+  ) {
     type = 'DEBIT';
   } else if (/\b(?:credited|credit|deposited|received|added|refunded)\b/i.test(cleanText)) {
     type = 'CREDIT';
+  } else if (/\b(?:debited|debit|withdrawn|spent|sent|paid|transferred|purchased)\b/i.test(cleanText)) {
+    type = 'DEBIT';
   }
 
   // 2. Transaction Amount
@@ -267,6 +280,61 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
         sender: sender || 'SMS Forwarder',
         isDemo: simulated
       });
+
+      // Auto-match staying member rent collection on bank CREDIT
+      if (parsed.type === 'CREDIT' && parsed.amount > 0) {
+        try {
+          const users = await User.find();
+          const recipientText = String(parsed.recipient || '').toLowerCase();
+          const messageText = String(message || '').toLowerCase();
+
+          // Match member by first name (e.g. Harish, Veera, Gowtham, Ashwin, Jegan, Dhanesh, Bhuvanesh, Akash, Bala)
+          const matchedUser = users.find((u) => {
+            const uName = (u.name || '').trim().toLowerCase();
+            if (!uName || uName.length < 3) return false;
+            const regex = new RegExp(`\\b${uName}\\b`, 'i');
+            return regex.test(recipientText) || regex.test(messageText);
+          });
+
+          if (matchedUser) {
+            const cycle = await FundingCycle.findOne({ month: monthKey() });
+            if (cycle) {
+              const payment = cycle.payments.find((p) => String(p.user) === String(matchedUser._id));
+              if (payment) {
+                let currentPaid = 0;
+                if (payment.amount > 0) {
+                  currentPaid = payment.amount;
+                } else if (payment.paid) {
+                  currentPaid = cycle.contributionAmount || 6000;
+                }
+
+                const target = cycle.contributionAmount || 6000;
+                const newTotal = currentPaid + parsed.amount;
+                payment.amount = newTotal;
+                payment.paid = newTotal >= target;
+                payment.paidAt = smsDate;
+                payment.recordedBy = matchedUser._id;
+                payment.source = 'SMS';
+
+                cycle.totalCollected = cycle.payments.reduce((s, p) => s + (p.amount || 0), 0);
+                await cycle.save();
+
+                parsed.matchedMember = {
+                  userId: matchedUser._id,
+                  name: matchedUser.name,
+                  amountCredited: parsed.amount,
+                  totalPaid: newTotal,
+                  target,
+                  paid: payment.paid,
+                  due: Math.max(0, target - newTotal)
+                };
+              }
+            }
+          }
+        } catch (matchErr) {
+          console.error('Error auto-crediting funding cycle from SMS:', matchErr);
+        }
+      }
     } else {
       transactionDoc = existingTxn;
     }
@@ -308,8 +376,13 @@ async function getStoredBankBalance() {
 /**
  * Get transaction history
  */
-async function getBankTransactions(limit = 50) {
-  return BankTransaction.find({ bankName: BANK_NAME })
+async function getBankTransactions(limit = 100, month = null) {
+  const query = { bankName: BANK_NAME };
+  if (month && /^\d{4}-\d{2}$/.test(month)) {
+    const { start, end } = istMonthRange(month);
+    query.date = { $gte: start, $lt: end };
+  }
+  return BankTransaction.find(query)
     .sort({ date: -1 })
     .limit(limit);
 }

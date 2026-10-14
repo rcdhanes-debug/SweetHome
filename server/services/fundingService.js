@@ -170,7 +170,8 @@ async function getCurrentSummary(targetMonth = monthKey()) {
       dueAmount,
       status,
       paidAt: p.paidAt,
-      recordedBy: p.recordedBy ? { _id: p.recordedBy._id, name: p.recordedBy.name } : null
+      recordedBy: p.recordedBy ? { _id: p.recordedBy._id, name: p.recordedBy.name } : null,
+      source: p.source || 'MANUAL'
     };
   });
 

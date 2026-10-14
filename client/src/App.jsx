@@ -74,7 +74,7 @@ export default function App() {
                 <Route path="/members" element={<Members />} />
                 <Route path="/calendar" element={<Calendar />} />
                 <Route path="/admin" element={<Admin />} />
-                <Route path="/bank" element={<BankTracking />} />
+                <Route path="/bank" element={<Navigate to="/expenses" replace />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Route>
             </Routes>
