@@ -222,15 +222,22 @@ function extractSmsPayload(req) {
 
 // POST /api/bank/sms-webhook (also /api/bank/webhook and /api/bank/sms)
 const handleSmsWebhook = asyncHandler(async (req, res) => {
-  console.log(`[Bank Webhook] Incoming ${req.method} request:`, {
-    query: req.query,
-    contentType: req.headers['content-type'],
-    userAgent: req.headers['user-agent'],
-    bodySummary: typeof req.body === 'object' ? JSON.stringify(req.body).slice(0, 200) : String(req.body || '').slice(0, 200)
-  });
+  console.log('\n================== 📥 INCOMING SMS APP FORWARD ==================');
+  console.log('TIME:', new Date().toISOString());
+  console.log('METHOD:', req.method);
+  console.log('CONTENT-TYPE:', req.headers['content-type'] || 'None');
+  console.log('USER-AGENT:', req.headers['user-agent'] || 'None');
+  console.log('QUERY PARAMS:', JSON.stringify(req.query, null, 2));
+  console.log('RAW BODY:');
+  try {
+    console.log(typeof req.body === 'object' ? JSON.stringify(req.body, null, 2) : String(req.body));
+  } catch (_) {
+    console.log(req.body);
+  }
+  console.log('=================================================================\n');
 
   if (!isAuthorizedWebhook(req)) {
-    console.warn('[Bank Webhook] Unauthorized attempt with token:', req.query.secret || req.query.token);
+    console.warn('[Bank Webhook] ⚠️ Unauthorized attempt! Secret token provided:', req.query.secret || req.query.token || req.headers['x-webhook-secret'] || 'None');
     return res.status(401).json({
       success: false,
       message: 'Unauthorized: Missing or invalid webhook secret token.'
@@ -238,10 +245,16 @@ const handleSmsWebhook = asyncHandler(async (req, res) => {
   }
 
   const { message, sender, timestamp } = extractSmsPayload(req);
-  console.log('[Bank Webhook] Extracted payload:', { sender, messageLength: message?.length, timestamp });
+  console.log('[Bank Webhook] 🔍 Extracted SMS:', {
+    sender,
+    timestamp,
+    messageLength: message?.length,
+    messagePreview: message
+  });
 
   // Gracefully handle test pings or empty test requests from mobile forwarding apps
   if (!message || /test|ping|hello|check|sample/i.test(message)) {
+    console.log('[Bank Webhook] ✅ Handled test ping or empty request from SMS app');
     return res.status(200).json({
       success: true,
       isTest: true,
