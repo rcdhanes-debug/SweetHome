@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from 'motion/react';
-import welcomePhoto from '../assets/welcome-photo.jpg';
 import { ArrowRight, Sparkles } from 'lucide-react';
+
+const welcomePhoto = '/welcome-photo.jpg';
 
 export default function SplashScreen({ exiting, onSkip }) {
   const reduced = useReducedMotion();
