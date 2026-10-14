@@ -200,7 +200,9 @@ export function AppProvider({ children }) {
       value={{
         users,
         funding,
+        setFunding,
         history,
+        setHistory,
         expenses,
         chores,
         today,

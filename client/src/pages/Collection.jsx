@@ -16,7 +16,7 @@ import Confetti from '../components/Confetti';
 import { formatCurrency, monthLabel, deadlineInfo } from '../utils/format';
 
 export default function Collection() {
-  const { funding, history, users, loading, reloadFunding } = useApp();
+  const { funding, setFunding, history, setHistory, users, loading, reloadFunding } = useApp();
   const { isAdmin, runWithAuth } = useAuth();
   const toast = useToast();
   const reduced = useReducedMotion();
@@ -130,33 +130,88 @@ export default function Collection() {
 
   const confirmPayAmount = async ({ amount, recordedBy }) => {
     const { payment } = payTarget;
+    const targetUserId = payment.user._id;
     setPayTarget(null);
-    setBusyId(payment.user._id);
+    setBusyId(targetUserId);
+
+    // Instant optimistic update: update the card and progress bar immediately with zero delay
+    const targetAmt = payment.targetAmount || funding?.contributionAmount || 6000;
+    const prevAmount = payment.amount || 0;
+    const newAmount = prevAmount + amount;
+    const willBePaid = newAmount >= targetAmt;
+    const recordedUser = users.find((u) => u._id === recordedBy) || payment.user;
+
+    setFunding((prev) => {
+      if (!prev) return prev;
+      const updatedPayments = prev.payments.map((p) => {
+        if (p.user?._id === targetUserId) {
+          return {
+            ...p,
+            amount: newAmount,
+            paid: willBePaid,
+            status: willBePaid ? 'paid' : 'partial',
+            dueAmount: Math.max(0, targetAmt - newAmount),
+            paidAt: new Date().toISOString(),
+            recordedBy: recordedUser ? { _id: recordedUser._id, name: recordedUser.name } : p.recordedBy,
+            source: 'MANUAL'
+          };
+        }
+        return p;
+      });
+
+      const newTotal = updatedPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      const newPaidCount = updatedPayments.filter((p) => p.status === 'paid').length;
+      const newPartialCount = updatedPayments.filter((p) => p.status === 'partial').length;
+      const newPendingCount = updatedPayments.filter((p) => p.status === 'pending').length;
+
+      return {
+        ...prev,
+        payments: updatedPayments,
+        totalCollected: newTotal,
+        balance: (prev.rolloverBalance || 0) + newTotal - (prev.totalSpent || 0),
+        paidCount: newPaidCount,
+        partialCount: newPartialCount,
+        pendingCount: newPendingCount
+      };
+    });
+
+    setCelebrate(true);
+    toast.show(`✓ ${formatCurrency(amount)} marked as paid`);
+
     try {
-      await fundingApi.pay(payment.user._id, amount, recordedBy);
-      toast.show(`✓ ${formatCurrency(amount)} marked as paid`);
-      setCelebrate(true);
-      await reloadFunding();
+      const updatedSummary = await fundingApi.pay(targetUserId, amount, recordedBy);
+      if (updatedSummary) {
+        setFunding(updatedSummary);
+      }
+      // Refresh history in background
+      fundingApi.getHistory().then(setHistory).catch(() => {});
     } catch (err) {
       toast.show(err.message || 'Failed to record payment', 'error');
+      // If error occurs, reload real state
+      await reloadFunding();
     } finally {
       setBusyId('');
     }
   };
 
   const togglePending = async (payment) => {
-    setBusyId(payment.user._id);
+    const targetUserId = payment.user._id;
+    setBusyId(targetUserId);
     try {
       await runWithAuth(
         { title: 'Revert Payment', subtitle: `Mark ${payment.user.name} as pending?`, adminOnly: true },
         async (token) => {
-          await fundingApi.setStatus(token, payment.user._id, false);
+          const updatedSummary = await fundingApi.setStatus(token, targetUserId, false);
+          if (updatedSummary) {
+            setFunding(updatedSummary);
+          }
         }
       );
       toast.show('Payment reverted to pending');
-      await reloadFunding();
+      fundingApi.getHistory().then(setHistory).catch(() => {});
     } catch (err) {
       if (err.message !== 'Cancelled') toast.show(err.message, 'error');
+      await reloadFunding();
     } finally {
       setBusyId('');
     }

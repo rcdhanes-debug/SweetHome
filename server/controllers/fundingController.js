@@ -26,12 +26,13 @@ const markPaid = asyncHandler(async (req, res) => {
 
   const summary = await funding.markPaid({ userId, amount, performedBy });
 
-  await audit.log({
+  // Log audit in background without blocking response
+  audit.log({
     action: 'CONTRIBUTION_PAID',
     performedBy,
     targetUser: userId,
     details: { month: monthKey(), amount }
-  });
+  }).catch((err) => console.error('Failed to log audit for CONTRIBUTION_PAID:', err.message));
 
   res.json(summary);
 });
@@ -47,12 +48,13 @@ const setStatus = asyncHandler(async (req, res) => {
     performedBy: req.user._id
   });
 
-  await audit.log({
+  // Log audit in background without blocking response
+  audit.log({
     action: paid ? 'CONTRIBUTION_PAID' : 'CONTRIBUTION_RESET',
     performedBy: req.user._id,
     targetUser: userId,
     details: { month: monthKey(), paid: Boolean(paid), paidAt: paidAt || null }
-  });
+  }).catch((err) => console.error('Failed to log audit for setStatus:', err.message));
 
   res.json(summary);
 });

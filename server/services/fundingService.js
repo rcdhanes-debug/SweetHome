@@ -103,13 +103,22 @@ async function getCycle(month) {
 
 async function calculateAutoRollover(currentMonthKey) {
   const prevCycles = await FundingCycle.find({ month: { $lt: currentMonthKey } });
+  if (!prevCycles.length) return 0;
+
+  const spentResults = await Promise.all(
+    prevCycles.map((pc) => {
+      const pcRange = istMonthRange(pc.month);
+      return Expense.aggregate([
+        { $match: { expenseDate: { $gte: pcRange.start, $lt: pcRange.end } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]);
+    })
+  );
+
   let totalRollover = 0;
-  for (const pc of prevCycles) {
-    const pcRange = istMonthRange(pc.month);
-    const pcSpentAgg = await Expense.aggregate([
-      { $match: { expenseDate: { $gte: pcRange.start, $lt: pcRange.end } } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
+  for (let i = 0; i < prevCycles.length; i++) {
+    const pc = prevCycles[i];
+    const pcSpent = spentResults[i][0]?.total || 0;
     let pcCollected = 0;
     for (const p of pc.payments) {
       if (p.amount > 0 && p.amount < pc.contributionAmount) {
@@ -118,7 +127,6 @@ async function calculateAutoRollover(currentMonthKey) {
         pcCollected += (p.amount || pc.contributionAmount);
       }
     }
-    const pcSpent = pcSpentAgg[0]?.total || 0;
     const pcNet = pcCollected - pcSpent;
     if (pcNet > 0) totalRollover += pcNet;
   }
