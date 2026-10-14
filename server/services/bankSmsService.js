@@ -85,9 +85,9 @@ function parseBankSms(text, sender = '') {
   }
 
   // 3. Available Balance
-  // Matches: "Avl Bal: INR 48,250.00", "Total Avl Bal Rs 50,000", "Available Balance: ₹45,000", "Bal: INR 40,000", "closing balance is Rs 3000"
+  // Matches: "Avl Bal: INR 48,250.00", "Total Avl Bal Rs 50,000", "Available Balance: ₹45,000", "Bal: INR 40,000", "new balance is INR 226.77"
   const balPatterns = [
-    /(?:(?:Total\s*|Net\s*)?Avl(?:able|\.)?\s*Bal(?:ance)?|Available\s*balance|Clear\s*balance|closing\s*balance|balance\s*in\s*A\/c|account\s*balance)[\s:.-]*(?:(?:is|of|INR|Rs\.?|₹)\s*)*([0-9,]+(?:\.[0-9]{1,2})?)/i,
+    /(?:(?:Total\s*|Net\s*|new\s*)?Avl(?:able|\.)?\s*Bal(?:ance)?|Available\s*balance|Clear\s*balance|new\s*balance|closing\s*balance|balance\s*in\s*A\/c|account\s*balance)[\s:.-]*(?:(?:is|of|INR|Rs\.?|₹)\s*)*([0-9,]+(?:\.[0-9]{1,2})?)/i,
     /(?:INR|Rs\.?|₹)\s*([0-9,]+(?:\.[0-9]{1,2})?)\s*(?:is\s*(?:the\s*)?)?(?:available|avl\b)/i,
     /\b(?:Bal|Balance)[\s:.-]+(?:(?:is|of|INR|Rs\.?|₹)\s*)*([0-9,]+(?:\.[0-9]{1,2})?)/i
   ];
@@ -102,11 +102,11 @@ function parseBankSms(text, sender = '') {
   }
   const balance = rawBalance ? parseFloat(rawBalance.replace(/,/g, '')) : null;
 
-  // 4. Account Number (e.g. "...4321", "ending 4321", "XX4321", "A/c 4321", "Card ending 4321")
+  // 4. Account Number (e.g. "...4202", "XXXXX594202", "XX4202", "ending 4202", "Card ending 4202")
   const acctPatterns = [
     /(?:ending\s*(?:with|in)?\s*(?:no\.?)?)\s*([0-9]{4})\b/i,
-    /(?:A\/C|Account|Acct|A\/c\s*no\.?)[^0-9]*([0-9]{4})\b/i,
-    /\b(?:X+|\.{3,})([0-9]{4})\b/i,
+    /(?:A\/C|Account|Acct|A\/c\s*no\.?)[^0-9]*(?:X+|\.{2,})?[0-9]*([0-9]{4})\b/i,
+    /(?:X+|\.{2,})[0-9]*([0-9]{4})\b/i,
     /Card\s*(?:ending)?\s*([0-9]{4})\b/i
   ];
 
@@ -181,7 +181,7 @@ function parseBankSms(text, sender = '') {
     type,
     amount,
     balance,
-    accountLast4: accountLast4 || '4321',
+    accountLast4: accountLast4 || '4202',
     reference,
     recipient: recipient || (type === 'DEBIT' ? 'Merchant / Payee' : 'Sender / Transfer'),
     description,
