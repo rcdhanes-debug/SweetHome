@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Building2,
@@ -537,8 +538,26 @@ export default function Expenses() {
                   </div>
 
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {t.recipient || t.description || 'Bank Transaction'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {t.recipient || t.description || 'Bank Transaction'}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '9px',
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 800,
+                          letterSpacing: '0.3px',
+                          textTransform: 'uppercase',
+                          flexShrink: 0,
+                          background: isDebit ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                          color: isDebit ? '#ef4444' : '#10b981',
+                          border: isDebit ? '1px solid rgba(239, 68, 68, 0.28)' : '1px solid rgba(16, 185, 129, 0.28)'
+                        }}
+                      >
+                        {isDebit ? 'Debit' : 'Credit'}
+                      </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--muted)', marginTop: '2px', flexWrap: 'wrap' }}>
                       <span>{formatDate(t.date)} • {formatTime(t.date)}</span>

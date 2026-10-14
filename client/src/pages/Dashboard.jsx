@@ -520,8 +520,26 @@ export default function Dashboard() {
                         </div>
                       )}
                       <div className="mini-ledger__body">
-                        <div className="mini-ledger__cat" style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>
-                          {t.description || t.recipient || (t.type === 'CREDIT' ? 'Credit Received' : 'UPI Payment')}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className="mini-ledger__cat" style={{ color: '#fff', fontSize: '13px', fontWeight: 600 }}>
+                            {t.description || t.recipient || (t.type === 'CREDIT' ? 'Credit Received' : 'UPI Payment')}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '9px',
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              fontWeight: 800,
+                              letterSpacing: '0.3px',
+                              textTransform: 'uppercase',
+                              flexShrink: 0,
+                              background: t.type === 'DEBIT' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                              color: t.type === 'DEBIT' ? '#f87171' : '#34d399',
+                              border: t.type === 'DEBIT' ? '1px solid rgba(239, 68, 68, 0.28)' : '1px solid rgba(16, 185, 129, 0.28)'
+                            }}
+                          >
+                            {t.type === 'DEBIT' ? 'Debit' : 'Credit'}
+                          </span>
                         </div>
                         <div className="mini-ledger__meta">
                           {formatDate(t.date || t.createdAt)} {t.source ? `• ${t.source}` : ''}{t.recipient && t.recipient !== t.description ? ` • ${t.recipient}` : ''}
