@@ -37,16 +37,21 @@ function markIntroSeen() {
 }
 
 export default function App() {
-  const [phase, setPhase] = useState(() => (readIntro() ? 'intro' : 'done'));
+  const [phase, setPhase] = useState('intro');
+
+  const handleSkip = () => {
+    if (phase === 'intro') {
+      setPhase('exit');
+    }
+  };
 
   useEffect(() => {
     if (phase === 'intro') {
-      const t = setTimeout(() => setPhase('exit'), 2500);
+      const t = setTimeout(() => setPhase('exit'), 3000);
       return () => clearTimeout(t);
     }
     if (phase === 'exit') {
       const t = setTimeout(() => {
-        markIntroSeen();
         setPhase('done');
       }, 550);
       return () => clearTimeout(t);
@@ -89,7 +94,7 @@ export default function App() {
   return (
     <>
       {phase === 'exit' && app}
-      <SplashScreen exiting={phase === 'exit'} />
+      <SplashScreen exiting={phase === 'exit'} onSkip={handleSkip} />
     </>
   );
 }
