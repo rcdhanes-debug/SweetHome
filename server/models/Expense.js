@@ -8,7 +8,9 @@ const expenseSchema = new mongoose.Schema(
     description: { type: String, trim: true, default: '' },
     paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     expenseDate: { type: Date, required: true, default: Date.now },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    bankTransactionRef: { type: mongoose.Schema.Types.ObjectId, ref: 'BankTransaction', default: null },
+    redeemRef: { type: mongoose.Schema.Types.ObjectId, ref: 'Redeem', default: null }
   },
   { timestamps: true }
 );

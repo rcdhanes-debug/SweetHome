@@ -335,6 +335,162 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
           console.error('Error auto-crediting funding cycle from SMS:', matchErr);
         }
       }
+
+      // Auto-match Redeem payout on bank DEBIT (prevents duplicate expense from Website + SMS)
+      if (parsed.type === 'DEBIT' && parsed.amount > 0) {
+        try {
+          const Redeem = require('../models/Redeem');
+          const Expense = require('../models/Expense');
+          const audit = require('./auditService');
+          const recipientText = String(parsed.recipient || '').toLowerCase();
+          const messageText = String(message || '').toLowerCase();
+
+          // 1. Check if an OPEN Redeem request matches this payout amount
+          const openRedeems = await Redeem.find({ closed: false, amount: parsed.amount }).populate('createdBy', 'name upiId');
+
+          let matchedRedeem = null;
+          if (openRedeems.length === 1) {
+            matchedRedeem = openRedeems[0];
+          } else if (openRedeems.length > 1) {
+            // Find by member name or UPI in recipient/message
+            matchedRedeem = openRedeems.find((r) => {
+              const creatorName = (r.createdBy?.name || '').toLowerCase();
+              const upi = (r.upiId || '').toLowerCase();
+              const upiHandle = upi.split('@')[0];
+              return (
+                (creatorName.length >= 3 && (recipientText.includes(creatorName) || messageText.includes(creatorName))) ||
+                (upiHandle.length >= 3 && (recipientText.includes(upiHandle) || messageText.includes(upiHandle)))
+              );
+            }) || openRedeems[0]; // fallback to oldest open of exact amount
+          }
+
+          const defaultAdmin = (await User.findOne({ role: 'admin' })) || (await User.findOne());
+          const settlerId = defaultAdmin?._id;
+
+          if (matchedRedeem) {
+            // Auto-settle open redeem request
+            matchedRedeem.closed = true;
+            matchedRedeem.closedByName = 'Bank SMS (Auto)';
+            matchedRedeem.closedBy = settlerId;
+            matchedRedeem.closedAt = smsDate;
+            matchedRedeem.source = 'SMS';
+            matchedRedeem.bankTransactionRef = transactionDoc._id;
+
+            // Create single expense linked to this transaction & redeem
+            const expense = await Expense.create({
+              amount: matchedRedeem.amount,
+              category: 'Misc',
+              description: matchedRedeem.note ? `Redeem: ${matchedRedeem.note}` : `Redeem payout — ${matchedRedeem.createdBy?.name || 'housemate'}`,
+              expenseDate: smsDate,
+              paidBy: settlerId || matchedRedeem.createdBy?._id,
+              createdBy: settlerId || matchedRedeem.createdBy?._id,
+              bankTransactionRef: transactionDoc._id,
+              redeemRef: matchedRedeem._id
+            });
+
+            matchedRedeem.expenseRef = expense._id;
+            await matchedRedeem.save();
+
+            transactionDoc.redeemRef = matchedRedeem._id;
+            await transactionDoc.save();
+
+            await audit.log({
+              action: 'REDEEM_CLOSED',
+              performedBy: settlerId,
+              details: {
+                id: matchedRedeem._id,
+                amount: matchedRedeem.amount,
+                source: 'SMS',
+                autoMatched: true,
+                bankTransactionId: transactionDoc._id,
+                expenseId: expense._id
+              }
+            });
+
+            parsed.matchedRedeem = {
+              redeemId: matchedRedeem._id,
+              amount: matchedRedeem.amount,
+              recipient: matchedRedeem.createdBy?.name,
+              autoClosed: true
+            };
+          } else {
+            // 2. Check if a RECENTLY CLOSED Redeem matches (settled on website today, awaiting SMS)
+            const startOfDay = new Date(smsDate);
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const closedRedeems = await Redeem.find({
+              closed: true,
+              amount: parsed.amount,
+              bankTransactionRef: null,
+              closedAt: { $gte: startOfDay }
+            }).populate('createdBy', 'name upiId');
+
+            let matchedClosed = null;
+            if (closedRedeems.length === 1) {
+              matchedClosed = closedRedeems[0];
+            } else if (closedRedeems.length > 1) {
+              matchedClosed = closedRedeems.find((r) => {
+                const creatorName = (r.createdBy?.name || '').toLowerCase();
+                const upi = (r.upiId || '').toLowerCase();
+                const upiHandle = upi.split('@')[0];
+                return (
+                  (creatorName.length >= 3 && (recipientText.includes(creatorName) || messageText.includes(creatorName))) ||
+                  (upiHandle.length >= 3 && (recipientText.includes(upiHandle) || messageText.includes(upiHandle)))
+                );
+              }) || closedRedeems[0];
+            }
+
+            if (matchedClosed) {
+              // Link bank transaction to avoid duplicate expense
+              matchedClosed.bankTransactionRef = transactionDoc._id;
+              matchedClosed.source = 'SMS';
+              await matchedClosed.save();
+
+              transactionDoc.redeemRef = matchedClosed._id;
+              await transactionDoc.save();
+
+              if (matchedClosed.expenseRef) {
+                await Expense.findByIdAndUpdate(matchedClosed.expenseRef, {
+                  bankTransactionRef: transactionDoc._id,
+                  redeemRef: matchedClosed._id
+                });
+              }
+
+              parsed.matchedRedeem = {
+                redeemId: matchedClosed._id,
+                amount: matchedClosed.amount,
+                recipient: matchedClosed.createdBy?.name,
+                linkedExisting: true
+              };
+            } else {
+              // 3. Not a redeem: check if a manual expense of this amount was created today without a bankTransactionRef
+              const existingManualExpense = await Expense.findOne({
+                amount: parsed.amount,
+                bankTransactionRef: null,
+                expenseDate: { $gte: startOfDay }
+              });
+
+              if (existingManualExpense) {
+                existingManualExpense.bankTransactionRef = transactionDoc._id;
+                await existingManualExpense.save();
+              } else {
+                // Create single expense for general bank debit (e.g. EB bill, groceries, Swiggy)
+                await Expense.create({
+                  amount: parsed.amount,
+                  category: 'Misc',
+                  description: parsed.recipient ? `Paid to ${parsed.recipient}` : (parsed.description || 'Bank Debit'),
+                  expenseDate: smsDate,
+                  paidBy: settlerId,
+                  createdBy: settlerId,
+                  bankTransactionRef: transactionDoc._id
+                });
+              }
+            }
+          }
+        } catch (debitErr) {
+          console.error('Error auto-processing bank DEBIT in bankSmsService:', debitErr);
+        }
+      }
     } else {
       transactionDoc = existingTxn;
     }

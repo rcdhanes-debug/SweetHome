@@ -291,14 +291,29 @@ export default function Redeem() {
                   <CheckCircle2 size={18} />
                 </div>
                 <div className="nb-row__body">
-                  <div className="nb-row__text nb-row__text--muted">
-                    {formatCurrency(r.amount)}
+                  <div className="nb-row__text nb-row__text--muted" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span>{formatCurrency(r.amount)}</span>
                     <span className="badge badge--protected">Settled</span>
+                    {(r.source === 'SMS' || r.bankTransactionRef) && (
+                      <span
+                        className="badge"
+                        style={{
+                          background: 'rgba(16, 185, 129, 0.15)',
+                          color: '#34d399',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          padding: '1px 6px'
+                        }}
+                      >
+                        ⚡ Auto SMS
+                      </span>
+                    )}
                   </div>
                   <div className="redeem-upi redeem-upi--muted">{r.upiId}</div>
                   {r.note && <div className="nb-row__desc">{r.note}</div>}
                   <div className="nb-row__meta">
-                    {r.createdBy?.name || '—'} • settled by {r.closedByName || r.closedBy?.name || '—'} on {formatDate(r.closedAt)}
+                    {r.createdBy?.name || '—'} • settled by {r.closedByName || r.closedBy?.name || (r.source === 'SMS' ? 'Bank SMS (Auto)' : '—')} on {formatDate(r.closedAt)}
                   </div>
                 </div>
                 <div className="nb-row__actions">

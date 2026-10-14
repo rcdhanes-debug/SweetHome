@@ -42,16 +42,50 @@ const close = asyncHandler(async (req, res) => {
   const settler = closedByName ? await User.findOne({ name: closedByName }) : null;
   const settlerOrCreator = settler?._id || item.createdBy._id || item.createdBy;
 
-  // Auto-create expense so balance is reduced
-  const today = new Date().toISOString().slice(0, 10);
-  const expense = await Expense.create({
+  // Cross-check if a matching BankTransaction DEBIT arrived today to prevent double counting
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const BankTransaction = require('../models/BankTransaction');
+  const existingTxn = await BankTransaction.findOne({
+    type: 'DEBIT',
     amount: item.amount,
-    category: 'Misc',
-    description: item.note ? `Redeem: ${item.note}` : `Redeem payout — ${item.createdBy?.name || 'housemate'}`,
-    expenseDate: today,
-    paidBy: settlerOrCreator,
-    createdBy: settlerOrCreator,
+    redeemRef: null,
+    date: { $gte: startOfDay }
   });
+
+  let expense = null;
+  if (existingTxn) {
+    // Bank SMS arrived earlier! Link it
+    item.bankTransactionRef = existingTxn._id;
+    item.source = 'SMS';
+    existingTxn.redeemRef = item._id;
+    await existingTxn.save();
+
+    // Check if an expense was already created for this bank transaction
+    expense = await Expense.findOne({ bankTransactionRef: existingTxn._id });
+    if (expense) {
+      expense.description = item.note ? `Redeem: ${item.note}` : `Redeem payout — ${item.createdBy?.name || 'housemate'}`;
+      expense.redeemRef = item._id;
+      if (settlerOrCreator) expense.paidBy = settlerOrCreator;
+      await expense.save();
+    }
+  }
+
+  // If no expense exists yet (e.g. marked on website before bank SMS arrived), create single expense
+  if (!expense) {
+    const today = new Date().toISOString().slice(0, 10);
+    expense = await Expense.create({
+      amount: item.amount,
+      category: 'Misc',
+      description: item.note ? `Redeem: ${item.note}` : `Redeem payout — ${item.createdBy?.name || 'housemate'}`,
+      expenseDate: today,
+      paidBy: settlerOrCreator,
+      createdBy: settlerOrCreator,
+      bankTransactionRef: item.bankTransactionRef || null,
+      redeemRef: item._id
+    });
+  }
 
   // Store reference so we can delete on reopen
   item.expenseRef = expense._id;
@@ -60,7 +94,14 @@ const close = asyncHandler(async (req, res) => {
   await audit.log({
     action: 'REDEEM_CLOSED',
     performedBy: settlerOrCreator,
-    details: { id: item._id, amount: item.amount, upiId: item.upiId, closedBy: closedByName, expenseId: expense._id }
+    details: {
+      id: item._id,
+      amount: item.amount,
+      upiId: item.upiId,
+      closedBy: closedByName,
+      expenseId: expense._id,
+      bankTransactionId: item.bankTransactionRef
+    }
   });
 
   res.json(item);
@@ -73,8 +114,17 @@ const reopen = asyncHandler(async (req, res) => {
   if (item.expenseRef) {
     await Expense.findByIdAndDelete(item.expenseRef);
     item.expenseRef = null;
-    await item.save();
   }
+
+  // Unlink bank transaction if attached
+  if (item.bankTransactionRef) {
+    const BankTransaction = require('../models/BankTransaction');
+    await BankTransaction.findByIdAndUpdate(item.bankTransactionRef, { redeemRef: null });
+    item.bankTransactionRef = null;
+    item.source = 'MANUAL';
+  }
+
+  await item.save();
 
   await audit.log({
     action: 'REDEEM_REOPENED',
@@ -88,9 +138,15 @@ const reopen = asyncHandler(async (req, res) => {
 const remove = asyncHandler(async (req, res) => {
   const item = await redeem.deleteRedeem(req.params.id);
 
-  // Also clean up linked expense if present
+  // Clean up linked expense if present
   if (item.expenseRef) {
     await Expense.findByIdAndDelete(item.expenseRef);
+  }
+
+  // Unlink bank transaction
+  if (item.bankTransactionRef) {
+    const BankTransaction = require('../models/BankTransaction');
+    await BankTransaction.findByIdAndUpdate(item.bankTransactionRef, { redeemRef: null });
   }
 
   await audit.log({

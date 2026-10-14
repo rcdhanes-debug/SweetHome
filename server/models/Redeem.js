@@ -10,7 +10,9 @@ const redeemSchema = new mongoose.Schema(
     closedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     closedByName: { type: String, default: '' },
     closedAt: { type: Date, default: null },
-    expenseRef: { type: mongoose.Schema.Types.ObjectId, ref: 'Expense', default: null }
+    expenseRef: { type: mongoose.Schema.Types.ObjectId, ref: 'Expense', default: null },
+    bankTransactionRef: { type: mongoose.Schema.Types.ObjectId, ref: 'BankTransaction', default: null },
+    source: { type: String, enum: ['MANUAL', 'SMS'], default: 'MANUAL' }
   },
   { timestamps: true }
 );

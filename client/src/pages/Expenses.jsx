@@ -545,6 +545,20 @@ export default function Expenses() {
                       {t.reference && t.reference !== 'MANUAL' && (
                         <span>• Ref: {t.reference}</span>
                       )}
+                      {t.redeemRef && (
+                        <span
+                          style={{
+                            fontSize: '9.5px',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            background: 'rgba(168, 85, 247, 0.2)',
+                            color: '#c084fc'
+                          }}
+                        >
+                          Redeem Payout
+                        </span>
+                      )}
                       <span
                         style={{
                           fontSize: '9.5px',

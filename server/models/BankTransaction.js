@@ -59,6 +59,11 @@ const bankTransactionSchema = new mongoose.Schema(
     isDemo: {
       type: Boolean,
       default: false
+    },
+    redeemRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Redeem',
+      default: null
     }
   },
   { timestamps: true }
