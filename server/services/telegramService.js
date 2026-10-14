@@ -85,7 +85,6 @@ async function sendTomorrowChoresNotification() {
   const { TIMEZONE } = require('../config');
   const tz = TIMEZONE || 'Asia/Kolkata';
 
-  // Tomorrow weekday & date label
   const tomorrowDate = new Date(Date.now() + 86400000);
   const tomorrowWeekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(tomorrowDate);
   const tomorrowDateStr = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeZone: tz }).format(tomorrowDate);
@@ -93,15 +92,16 @@ async function sendTomorrowChoresNotification() {
   const dayData = await choreService.getDay(tomorrowWeekday);
   if (!dayData) return false;
 
-  const cooking = dayData.cooking?.map((u) => u.name).join(', ') || 'None';
+  const cooking = dayData.cooking?.map((u) => u.name).join(' & ') || 'None';
   const cleaning = dayData.cleaning?.map((u) => u.name).join(', ') || 'None';
   const homeClean = dayData.homeClean?.name || 'None';
 
-  const text = `🌙 <b>Tomorrow's Duty Schedule (${tomorrowWeekday}, ${tomorrowDateStr})</b>\n\n` +
-    `🍳 <b>Cooking</b>: ${cooking}\n` +
-    `🧹 <b>Cleaning</b>: ${cleaning}\n` +
-    `🏠 <b>Home Clean</b>: ${homeClean}\n\n` +
-    `Have a great evening! ✨`;
+  const text = `🌙 <b>Tomorrow's Duty Schedule</b>\n` +
+    `📅 <b>${tomorrowWeekday}, ${tomorrowDateStr}</b>\n\n` +
+    `🍳 <b>Cooking Team</b>: <b>${cooking}</b>\n` +
+    `🧹 <b>Kitchen & Utensils</b>: <b>${cleaning}</b>\n` +
+    `🏠 <b>Hall & Common Area</b>: <b>${homeClean}</b>\n\n` +
+    `<i>Great food and a clean home keep our brotherhood strong! ❤️</i>`;
 
   return sendTelegramMessage(text);
 }
@@ -117,12 +117,13 @@ async function sendRemainingMoneyNotification() {
 
   const pendingText = summary.partialCount > 0
     ? `⏳ <i>${summary.pendingCount} unpaid, ${summary.partialCount} partial payment(s)</i>`
-    : (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All 9 housemates paid!</i>`);
+    : (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All 9 housemates fully paid!</i>`);
 
-  const text = `💰 <b>Remaining Household Balance Update</b> (${summary.monthLabel})\n\n` +
-    `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/9 Fully Paid)\n` +
+  const text = `💰 <b>Household Financial Health Update</b>\n` +
+    `📅 <b>Period</b>: ${summary.monthLabel}\n\n` +
+    `🏦 <b>Live Bank Remaining Balance</b>: <b>₹${Number(bankAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>${bankDetails}\n\n` +
+    `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} <i>(${summary.paidCount}/9 Paid)</i>\n` +
     `💸 <b>Total Spent</b>: ₹${summary.totalSpent.toLocaleString('en-IN')}\n\n` +
-    `🏦 <b>Bank Remaining Balance</b>: <b>₹${Number(bankAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>${bankDetails}\n\n` +
     pendingText;
 
   return sendTelegramMessage(text);
@@ -150,13 +151,13 @@ async function sendNewRedeemNotification(redeemItem) {
     if (u) requesterName = u.name;
   }
 
-  const amountStr = Number(item.amount || 0).toLocaleString('en-IN');
-  const noteStr = item.note ? `\n📝 <b>Note</b>: ${item.note}` : '';
+  const amountStr = Number(item.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const noteStr = item.note ? `\n📝 <b>Purpose</b>: ${item.note}` : '';
 
-  const text = `🤝 <b>New Redeem Request Created!</b>\n\n` +
+  const text = `🤝 <b>New Reimbursement Request Created!</b>\n\n` +
     `👤 <b>Requested By</b>: <b>${requesterName}</b>\n` +
     `💰 <b>Amount</b>: <b>₹${amountStr}</b>\n` +
-    `💳 <b>UPI ID</b>: <code>${item.upiId}</code>${noteStr}\n\n` +
+    `💳 <b>UPI ID</b>: <code>${item.upiId}</code> <i>(Tap to copy)</i>${noteStr}\n\n` +
     `Hi <b>Ashwin</b>! 👋 Please kindly check when you get a moment to settle the payout! ✨`;
 
   return sendTelegramMessage(text);
@@ -184,14 +185,14 @@ async function sendRedeemClosedNotification(redeemItem, closedByName) {
     if (u) requesterName = u.name;
   }
 
-  const amountStr = Number(item.amount || 0).toLocaleString('en-IN');
+  const amountStr = Number(item.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const closedBy = closedByName || 'Ashwin';
 
-  const text = `✅ <b>Redeem Request Settled!</b>\n\n` +
-    `👤 <b>Requester</b>: ${requesterName}\n` +
-    `💰 <b>Amount</b>: ₹${amountStr}\n` +
-    `✅ <b>Settled By</b>: <b>${closedBy}</b>\n\n` +
-    `The payout has been completed! 🎉`;
+  const text = `🎉 <b>Reimbursement Settled & Closed!</b>\n\n` +
+    `👤 <b>Paid To</b>: <b>${requesterName}</b>\n` +
+    `💰 <b>Amount Settled</b>: <b>₹${amountStr}</b>\n` +
+    `✅ <b>Processed By</b>: <b>${closedBy}</b>\n\n` +
+    `<i>The payout has been completed and marked closed on the portal! ✨</i>`;
 
   return sendTelegramMessage(text);
 }
@@ -204,21 +205,64 @@ async function sendUnpaidRedeemReminder() {
     return false;
   }
 
+  const totalPendingAmount = openRedeems.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
   const itemsList = openRedeems
     .map((r) => {
       const name = r.createdBy?.name || 'Housemate';
-      const noteStr = r.note ? ` (${r.note})` : '';
-      return `• <b>${name}</b>: ₹${r.amount.toLocaleString('en-IN')}${noteStr} — <code>${r.upiId}</code>`;
+      const noteStr = r.note ? ` <i>(${r.note})</i>` : '';
+      return `• <b>${name}</b>: ₹${Number(r.amount || 0).toLocaleString('en-IN')}${noteStr}\n  UPI: <code>${r.upiId}</code>`;
     })
-    .join('\n');
+    .join('\n\n');
 
-  const text = `🤝 <b>Unpaid Redeem Requests Reminder</b>\n\n` +
+  const text = `🤝 <b>Pending Reimbursements Reminder</b>\n\n` +
     `Hi <b>Ashwin</b>! 👋\n` +
-    `There ${openRedeems.length === 1 ? 'is 1 unpaid redeem request' : `are ${openRedeems.length} unpaid redeem requests`} pending settlement:\n\n` +
+    `There ${openRedeems.length === 1 ? 'is <b>1 request</b>' : `are <b>${openRedeems.length} requests</b>`} awaiting settlement (Total: <b>₹${totalPendingAmount.toLocaleString('en-IN')}</b>):\n\n` +
     `${itemsList}\n\n` +
-    `Please kindly check when you get a moment, settle the payment(s) via UPI, and mark them closed on the portal! Thank you so much! ✨`;
+    `Please kindly settle via UPI when you get a moment and mark closed on the portal! Thank you so much! ✨`;
 
   return sendTelegramMessage(text);
+}
+
+async function sendNewExpenseNotification(expenseData) {
+  try {
+    const BankBalance = require('../models/BankBalance');
+    const bankDoc = await BankBalance.findOne().sort({ updatedAt: -1 });
+
+    const amountStr = Number(expenseData.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const category = expenseData.category || 'General';
+    const desc = expenseData.description ? `\n📝 <b>Details</b>: ${expenseData.description}` : '';
+    const paidBy = expenseData.paidByName || 'A housemate';
+    const bankBalStr = bankDoc ? `\n🏦 <b>Bank Remaining Balance</b>: ₹${Number(bankDoc.balance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
+
+    const text = `🧾 <b>New House Expense Recorded!</b>\n\n` +
+      `💰 <b>Amount</b>: <b>₹${amountStr}</b>\n` +
+      `🏷️ <b>Category</b>: <b>${category}</b>\n` +
+      `👤 <b>Paid By</b>: <b>${paidBy}</b>${desc}${bankBalStr}\n\n` +
+      `<i>Updated on the Sweet Home expense ledger. ✨</i>`;
+
+    return sendTelegramMessage(text);
+  } catch (err) {
+    console.error('[telegram] Failed to send expense notification:', err.message);
+    return false;
+  }
+}
+
+async function sendContributionPaidNotification({ memberName, amount, monthLabel, paidCount, totalMembers }) {
+  try {
+    const amountStr = Number(amount || 0).toLocaleString('en-IN');
+    const text = `🎉 <b>Monthly Contribution Received!</b>\n\n` +
+      `👤 <b>Housemate</b>: <b>${memberName}</b>\n` +
+      `💵 <b>Amount Paid</b>: <b>₹${amountStr}</b>\n` +
+      `📅 <b>Month</b>: <b>${monthLabel || 'Current Month'}</b>\n` +
+      `📊 <b>House Status</b>: <b>${paidCount || '?'}/${totalMembers || 9} Paid</b>\n\n` +
+      `<i>Thank you for contributing on time! ✨</i>`;
+
+    return sendTelegramMessage(text);
+  } catch (err) {
+    console.error('[telegram] Failed to send contribution notification:', err.message);
+    return false;
+  }
 }
 
 module.exports = {
@@ -230,5 +274,7 @@ module.exports = {
   sendRemainingMoneyNotification,
   sendNewRedeemNotification,
   sendRedeemClosedNotification,
-  sendUnpaidRedeemReminder
+  sendUnpaidRedeemReminder,
+  sendNewExpenseNotification,
+  sendContributionPaidNotification
 };

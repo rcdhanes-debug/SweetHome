@@ -58,15 +58,16 @@ async function handleCommand(msg, token) {
     const dateStr = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeZone: tz }).format(todayDate);
 
     const dayData = await choreService.getDay(weekday);
-    const cooking = dayData?.cooking?.map((u) => u.name).join(', ') || 'None';
+    const cooking = dayData?.cooking?.map((u) => u.name).join(' & ') || 'None';
     const cleaning = dayData?.cleaning?.map((u) => u.name).join(', ') || 'None';
     const homeClean = dayData?.homeClean?.name || 'None';
 
-    const reply = `☀️ <b>Today's Duty Schedule (${weekday}, ${dateStr})</b>\n\n` +
-      `🍳 <b>Cooking</b>: ${cooking}\n` +
-      `🧹 <b>Cleaning</b>: ${cleaning}\n` +
-      `🏠 <b>Home Clean</b>: ${homeClean}\n\n` +
-      `Keep it sparkling clean! ✨`;
+    const reply = `☀️ <b>Today's Duty Schedule</b>\n` +
+      `📅 <b>${weekday}, ${dateStr}</b>\n\n` +
+      `🍳 <b>Cooking Team</b>: <b>${cooking}</b>\n` +
+      `🧹 <b>Kitchen & Utensils</b>: <b>${cleaning}</b>\n` +
+      `🏠 <b>Hall & Common Area</b>: <b>${homeClean}</b>\n\n` +
+      `<i>Let's have a wonderful and productive day together! ✨</i>`;
     return replyTelegram(token, chatId, reply);
   }
 
@@ -76,32 +77,40 @@ async function handleCommand(msg, token) {
     const dateStr = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeZone: tz }).format(tomorrowDate);
 
     const dayData = await choreService.getDay(weekday);
-    const cooking = dayData?.cooking?.map((u) => u.name).join(', ') || 'None';
+    const cooking = dayData?.cooking?.map((u) => u.name).join(' & ') || 'None';
     const cleaning = dayData?.cleaning?.map((u) => u.name).join(', ') || 'None';
     const homeClean = dayData?.homeClean?.name || 'None';
 
-    const reply = `🌙 <b>Tomorrow's Duty Schedule (${weekday}, ${dateStr})</b>\n\n` +
-      `🍳 <b>Cooking</b>: ${cooking}\n` +
-      `🧹 <b>Cleaning</b>: ${cleaning}\n` +
-      `🏠 <b>Home Clean</b>: ${homeClean}\n\n` +
-      `Plan ahead! ✨`;
+    const reply = `🌙 <b>Tomorrow's Duty Schedule</b>\n` +
+      `📅 <b>${weekday}, ${dateStr}</b>\n\n` +
+      `🍳 <b>Cooking Team</b>: <b>${cooking}</b>\n` +
+      `🧹 <b>Kitchen & Utensils</b>: <b>${cleaning}</b>\n` +
+      `🏠 <b>Hall & Common Area</b>: <b>${homeClean}</b>\n\n` +
+      `<i>Plan ingredients & prep tonight! Have a restful evening! ✨</i>`;
     return replyTelegram(token, chatId, reply);
   }
 
   if (command === '/pending' || command === '/unpaid' || command === '/dues') {
     const summary = await fundingService.getCurrentSummary();
-    const pendingItems = summary.payments
-      .filter((p) => p.status !== 'paid')
-      .map((p) => {
-        if (p.status === 'partial') {
-          return `• <b>${p.user?.name || 'Member'}</b>: ₹${p.amount.toLocaleString('en-IN')} paid (<b>₹${(p.dueAmount || 0).toLocaleString('en-IN')} due</b>)`;
-        }
-        return `• <b>${p.user?.name || 'Member'}</b>: Unpaid (<b>₹${summary.contributionAmount.toLocaleString('en-IN')} due</b>)`;
-      })
-      .join('\n');
+    const unpaidPayments = summary.payments.filter((p) => p.status !== 'paid');
 
-    const reply = `⏳ <b>Pending Monthly Contributions (${summary.monthLabel})</b>\n\n` +
-      (pendingItems ? pendingItems + `\n\nTarget: ₹${summary.contributionAmount.toLocaleString('en-IN')} each` : `🎉 All housemates have paid for ${summary.monthLabel}!`);
+    let totalDue = 0;
+    const pendingItems = unpaidPayments.map((p) => {
+      const due = p.status === 'partial' ? (p.dueAmount || 0) : summary.contributionAmount;
+      totalDue += due;
+      if (p.status === 'partial') {
+        return `• <b>${p.user?.name || 'Member'}</b>: ₹${p.amount.toLocaleString('en-IN')} paid (<b>₹${due.toLocaleString('en-IN')} remaining</b>)`;
+      }
+      return `• <b>${p.user?.name || 'Member'}</b>: Unpaid (<b>₹${due.toLocaleString('en-IN')} due</b>)`;
+    }).join('\n');
+
+    const reply = `⏳ <b>Pending Monthly Contributions</b>\n` +
+      `📅 <b>Month</b>: ${summary.monthLabel}\n\n` +
+      (unpaidPayments.length > 0
+        ? `${pendingItems}\n\n` +
+          `💰 <b>Total Pending Collection</b>: <b>₹${totalDue.toLocaleString('en-IN')}</b>\n` +
+          `🎯 <b>Target Each</b>: ₹${summary.contributionAmount.toLocaleString('en-IN')}`
+        : `🎉 <b>All 9 housemates have paid for ${summary.monthLabel}! Super proud of everyone!</b> ✨`);
     return replyTelegram(token, chatId, reply);
   }
 
@@ -109,23 +118,30 @@ async function handleCommand(msg, token) {
     const Redeem = require('../models/Redeem');
     const openRedeems = await Redeem.find({ closed: false }).populate('createdBy', 'name');
     if (!openRedeems || openRedeems.length === 0) {
-      return replyTelegram(token, chatId, `🎉 <b>No unpaid redeem requests!</b>\nAll redeem requests are currently settled and closed.`);
+      return replyTelegram(token, chatId, `🎉 <b>No unpaid redeem requests!</b>\nAll reimbursement requests are settled and closed. ✨`);
     }
+    const totalSum = openRedeems.reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
     const itemsList = openRedeems
-      .map((r) => `• <b>${r.createdBy?.name || 'Member'}</b>: ₹${r.amount.toLocaleString('en-IN')}${r.note ? ` (${r.note})` : ''} — <code>${r.upiId}</code>`)
-      .join('\n');
-    const reply = `🤝 <b>Unpaid Redeem Requests (${openRedeems.length})</b>\n\n${itemsList}\n\nHi <b>Ashwin</b>! 👋 Please kindly check when you get a moment! ✨`;
+      .map((r) => `• <b>${r.createdBy?.name || 'Member'}</b>: ₹${Number(r.amount || 0).toLocaleString('en-IN')}${r.note ? ` <i>(${r.note})</i>` : ''}\n  UPI: <code>${r.upiId}</code>`)
+      .join('\n\n');
+    const reply = `🤝 <b>Pending Reimbursements (${openRedeems.length})</b>\n\n` +
+      `${itemsList}\n\n` +
+      `💰 <b>Total Pending Payout</b>: <b>₹${totalSum.toLocaleString('en-IN')}</b>\n\n` +
+      `Hi <b>Ashwin</b>! 👋 Please kindly check when you get a moment! ✨`;
     return replyTelegram(token, chatId, reply);
   }
 
   if (command === '/help' || command === '/start') {
-    const reply = `🏠 <b>Sweet Home Telegram Bot Commands</b>\n\n` +
-      `💰 /getbalance - Check live remaining balance\n` +
-      `🍳 /today - View today's duty schedule\n` +
-      `🌙 /tomorrow - View tomorrow's duty schedule\n` +
-      `⏳ /pending - See who is pending payment\n` +
-      `🤝 /redeem - Check unpaid redeem requests\n` +
-      `ℹ️ /help - Show this commands list`;
+    const reply = `🏠 <b>Sweet Home Telegram Bot Guide</b>\n\n` +
+      `💰 <b>Financial Commands</b>\n` +
+      `• /getbalance — Check live IDFC bank balance & collection status\n` +
+      `• /pending — View who is pending payment & total dues\n` +
+      `• /redeem — View unpaid reimbursement requests\n\n` +
+      `🍳 <b>Duty & Chores Commands</b>\n` +
+      `• /today — View today's cooking & cleaning crew\n` +
+      `• /tomorrow — View tomorrow's duty schedule\n\n` +
+      `ℹ️ /help — Show this command directory\n\n` +
+      `<i>Sweet Home • Living Together Made Seamless ❤️</i>`;
     return replyTelegram(token, chatId, reply);
   }
 }
