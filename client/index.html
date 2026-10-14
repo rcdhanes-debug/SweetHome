@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#4f46e5" />
+    <meta name="theme-color" content="#080d1a" />
     <meta name="description" content="Sweet Home - Shared home management for 9 housemates: collections, expenses and chores." />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -12,7 +12,14 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="preload" as="image" href="/welcome-photo.jpg" fetchpriority="high" />
     <title>Sweet Home</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #080d1a;
+      }
+    </style>
     <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(regs) {
@@ -27,7 +34,23 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="position:fixed;inset:0;background:#080d1a;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;z-index:9999;">
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;width:100%;max-width:600px;">
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border-radius:999px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.16);color:#e2e8f0;font-size:10.5px;font-weight:800;letter-spacing:1.2px;font-family:sans-serif;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#10b981;"></span>
+            <span>SWEET HOME • 2026</span>
+          </div>
+          <div style="position:relative;width:min(340px,92vw);aspect-ratio:1024/736;border-radius:18px;overflow:hidden;background:#0f172a;border:2.5px solid rgba(255,255,255,0.2);box-shadow:0 18px 45px -8px rgba(0,0,0,0.75);">
+            <img src="/welcome-photo.jpg" alt="Sweet Home Housemates" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" fetchpriority="high" />
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;font-family:sans-serif;">
+            <h1 style="margin:0;font-size:clamp(24px,5.5vw,38px);font-weight:850;color:#ffffff;text-shadow:0 2px 18px rgba(0,0,0,0.85);">Welcome Home ❤️</h1>
+            <p style="margin:0;font-size:clamp(11.5px,2.6vw,14px);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;color:rgba(226,232,240,0.85);">Our House • Our Brotherhood • Good Times</p>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

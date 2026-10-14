@@ -15,10 +15,10 @@ export default function SplashScreen({ exiting, onSkip }) {
         scale: exiting ? 1.04 : 1,
         filter: exiting ? 'blur(10px)' : 'blur(0px)'
       }}
-      transition={{ duration: exiting ? 0.45 : 0.35, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: exiting ? 0.45 : 0.25, ease: [0.22, 1, 0.36, 1] }}
       aria-hidden="true"
     >
-      {/* Background ambient lighting */}
+      {/* Ambient glowing halos */}
       <div className="splash__halo splash__halo--1" />
       <div className="splash__halo splash__halo--2" />
 
@@ -30,75 +30,51 @@ export default function SplashScreen({ exiting, onSkip }) {
           e.stopPropagation();
           onSkip?.();
         }}
-        initial={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 1, y: 0 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25, duration: 0.35 }}
-        title="Skip intro"
+        title="Skip to Dashboard"
       >
         <span>Skip</span>
         <ArrowRight size={13} />
       </motion.button>
 
-      {/* Centered Frame Style Layout */}
+      {/* Centered Frame Style Layout - DIRECT without delays */}
       <div className="splash__frame-container">
         {/* Top Badge */}
-        <motion.div
-          className="splash__badge"
-          initial={{ opacity: 0, scale: 0.9, y: 12 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: reduced ? 0 : 0.12, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        >
+        <div className="splash__badge">
           <span className="splash__badge-dot" />
           <span>SWEET HOME • 2026</span>
           <Sparkles size={12} style={{ color: '#fbbf24' }} />
-        </motion.div>
+        </div>
 
-        {/* Small Framed Picture with Border & Shadow */}
-        <motion.div
-          className="splash__photo-frame"
-          initial={{ opacity: 0, scale: 0.92, y: 16 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: reduced ? 0 : 0.22, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        >
+        {/* Framed Picture - Instant display */}
+        <div className="splash__photo-frame">
           <motion.img
             src={welcomePhoto}
             alt="Sweet Home Housemates"
             className="splash__frame-img"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
             initial={{ scale: 1 }}
             animate={{ scale: 1.05 }}
             transition={{ duration: 3.5, ease: 'easeOut' }}
           />
           <div className="splash__frame-shine" />
-        </motion.div>
+        </div>
 
         {/* Centered Welcome Typography */}
         <div className="splash__text-block">
-          <motion.h1
-            className="splash__title"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: reduced ? 0 : 0.4, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <h1 className="splash__title">
             Welcome Home ❤️
-          </motion.h1>
-
-          <motion.p
-            className="splash__tag"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: reduced ? 0 : 0.55, duration: 0.5, ease: 'easeOut' }}
-          >
+          </h1>
+          <p className="splash__tag">
             Our House • Our Brotherhood • Good Times
-          </motion.p>
+          </p>
         </div>
 
         {/* Centered Loader & Tap Hint */}
-        <motion.div
-          className="splash__loader-wrap"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.65, duration: 0.45 }}
-        >
+        <div className="splash__loader-wrap">
           <div className="splash__progress-track">
             <motion.div
               className="splash__progress-fill"
@@ -108,7 +84,7 @@ export default function SplashScreen({ exiting, onSkip }) {
             />
           </div>
           <span className="splash__tap-hint">Tap anywhere to enter</span>
-        </motion.div>
+        </div>
       </div>
     </motion.div>
   );
