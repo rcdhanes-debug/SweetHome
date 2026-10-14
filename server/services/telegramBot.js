@@ -33,16 +33,21 @@ async function handleCommand(msg, token) {
   const tz = TIMEZONE || 'Asia/Kolkata';
 
   if (command === '/getbalance' || command === '/balance') {
+    const BankBalance = require('../models/BankBalance');
     const summary = await fundingService.getCurrentSummary();
+    const bankDoc = await BankBalance.findOne().sort({ updatedAt: -1 });
+
+    const bankAmount = bankDoc ? bankDoc.balance : summary.balance;
+    const bankDetails = bankDoc?.accountLast4 ? ` <i>(${bankDoc.bankName || 'IDFC FIRST Bank'} • XX${bankDoc.accountLast4})</i>` : '';
+
     const pendingText = summary.partialCount > 0
       ? `⏳ <i>${summary.pendingCount} unpaid, ${summary.partialCount} partial payment(s)</i>`
       : (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All 9 housemates paid!</i>`);
 
     const reply = `💰 <b>Sweet Home Household Balance</b> (${summary.monthLabel})\n\n` +
-      `✨ <b>Rollover</b>: ₹${(summary.rolloverBalance || 0).toLocaleString('en-IN')}\n` +
       `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/9 Fully Paid)\n` +
       `💸 <b>Total Spent</b>: ₹${summary.totalSpent.toLocaleString('en-IN')}\n\n` +
-      `💳 <b>Available Balance</b>: <b>₹${summary.balance.toLocaleString('en-IN')}</b>\n\n` +
+      `🏦 <b>Bank Remaining Balance</b>: <b>₹${Number(bankAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>${bankDetails}\n\n` +
       pendingText;
     return replyTelegram(token, chatId, reply);
   }
