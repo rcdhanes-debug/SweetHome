@@ -2106,6 +2106,16 @@ textarea::placeholder {
 
 @media (max-width: 600px) {
   .redeem-waiting-section {
+    padding: 11px 12px;
+    margin-bottom: 24px;
+  }
+  .redeem-waiting-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .redeem-waiting-card {
     padding: 10px 12px;
   }
   .redeem-waiting-card__top {
@@ -2115,9 +2125,21 @@ textarea::placeholder {
   }
   .redeem-waiting-card__actions {
     width: 100%;
+    display: flex;
+    align-items: center;
     justify-content: space-between;
-    padding-top: 6px;
-    border-top: 1px solid rgba(245, 158, 11, 0.12);
+    padding-top: 8px;
+    border-top: 1px solid rgba(245, 158, 11, 0.15);
+  }
+  .redeem-waiting-card__actions .btn {
+    min-height: 32px;
+    padding: 5px 14px;
+    font-size: 12px;
+    touch-action: manipulation;
+  }
+  .redeem-compact-card__upi-pill {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 

@@ -65,6 +65,48 @@ const formatRemainingTime = (expiresAt, now) => {
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 };
 
+// Robust cross-platform copy that works reliably on mobile browsers & non-HTTPS contexts
+const fallbackCopy = (text) => {
+  try {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.width = '2em';
+    textArea.style.height = '2em';
+    textArea.style.padding = '0';
+    textArea.style.border = 'none';
+    textArea.style.outline = 'none';
+    textArea.style.boxShadow = 'none';
+    textArea.style.background = 'transparent';
+    textArea.setAttribute('readonly', '');
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    if (textArea.setSelectionRange) {
+      textArea.setSelectionRange(0, 99999);
+    }
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    return successful;
+  } catch (err) {
+    console.warn('Fallback copy failed', err);
+    return false;
+  }
+};
+
+const copyTextSafe = (text) => {
+  if (!text) return false;
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+      return true;
+    }
+  } catch (_) {}
+  return fallbackCopy(text);
+};
+
 export default function Redeem() {
   const { redeems = [], users = [], loading, reloadRedeems, reloadExpenses } = useApp();
   const { isAdmin, session, runWithAuth } = useAuth();
@@ -159,7 +201,10 @@ export default function Redeem() {
       toast.show('No UPI ID found for this person', 'error');
       return;
     }
-    navigator.clipboard.writeText(upiId);
+
+    try {
+      copyTextSafe(upiId);
+    } catch (_) {}
     setCopiedUpi(upiId);
 
     const items = Array.isArray(itemsToWait) ? itemsToWait : [itemsToWait];
@@ -184,6 +229,14 @@ export default function Redeem() {
         return next;
       });
       toast.show(`✓ Copied ${upiId}! Moved to Waiting for Confirmation (2 mins)`);
+
+      // On mobile view, smooth scroll so the user immediately sees it in Waiting for Confirmation
+      setTimeout(() => {
+        const waitingSec = document.getElementById('redeem-waiting-section');
+        if (waitingSec) {
+          waitingSec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 100);
     } else {
       toast.show(`✓ Copied ${upiId} to clipboard! (Amount: ₹${amount || 0})`);
     }
@@ -517,11 +570,9 @@ export default function Redeem() {
                           <span className="redeem-compact-card__name">{group.personName}</span>
                           <span
                             className="redeem-compact-card__upi-pill"
-                            onClick={() => {
-                              navigator.clipboard.writeText(group.upiId);
-                              toast.show(`✓ Copied ${group.upiId}`);
-                            }}
-                            title="Click to copy UPI ID"
+                            onClick={() => handleCopyUpi(group.upiId, group.totalAmount, group.items)}
+                            title="Click to copy UPI ID & wait confirmation"
+                            style={{ touchAction: 'manipulation' }}
                           >
                             <Copy size={10} /> {group.upiId}
                           </span>
@@ -646,7 +697,14 @@ export default function Redeem() {
                       {formatCurrency(r.amount)}
                       <span className="badge badge--today" style={{ fontSize: '10px', padding: '1px 5px' }}>Open</span>
                     </div>
-                    <div className="redeem-upi" style={{ fontSize: '11.5px' }}>{r.upiId}</div>
+                    <div
+                      className="redeem-upi"
+                      style={{ fontSize: '11.5px', cursor: 'pointer', touchAction: 'manipulation' }}
+                      onClick={() => handleCopyUpi(r.upiId, r.amount, [r])}
+                      title="Click to copy UPI ID & wait confirmation"
+                    >
+                      {r.upiId}
+                    </div>
                     {r.note && <div className="nb-row__desc" style={{ fontSize: '12px' }}>{r.note}</div>}
                     <div className="nb-row__meta" style={{ fontSize: '10.5px' }}>
                       Raised by {r.createdBy?.name || '—'} • {formatDate(r.createdAt)} • {formatTime(r.createdAt)}
@@ -657,7 +715,7 @@ export default function Redeem() {
                       type="button"
                       className="btn btn--primary btn--xs"
                       onClick={() => handleCopyUpi(r.upiId, r.amount, [r])}
-                      style={{ gap: '5px' }}
+                      style={{ gap: '5px', touchAction: 'manipulation' }}
                       title={`Copy UPI ID: ${r.upiId} & wait confirmation`}
                     >
                       {copiedUpi === r.upiId ? <CheckCircle2 size={11} style={{ color: '#fff' }} /> : <Copy size={11} />}
@@ -696,7 +754,7 @@ export default function Redeem() {
 
             {/* ─── WAITING FOR CONFIRMATION CATEGORY (MOVED TO LAST) ─── */}
             {waitingOpen.length > 0 && (
-              <section className="redeem-waiting-section" style={{ marginTop: regularOpen.length > 0 ? '22px' : '0' }}>
+              <section id="redeem-waiting-section" className="redeem-waiting-section" style={{ marginTop: regularOpen.length > 0 ? '22px' : '0' }}>
                 <div className="redeem-waiting-header">
                   <div className="redeem-waiting-title">
                     <span className="waiting-pulse-dot" />
@@ -708,6 +766,7 @@ export default function Redeem() {
                       type="button"
                       className="btn btn--restore btn--xs"
                       onClick={() => handleRestore(waitingOpen)}
+                      style={{ touchAction: 'manipulation' }}
                       title="Restore all waiting requests back to Open"
                     >
                       <RotateCcw size={12} /> Restore All
@@ -734,10 +793,11 @@ export default function Redeem() {
                                 <span
                                   className="redeem-compact-card__upi-pill"
                                   onClick={() => {
-                                    navigator.clipboard.writeText(group.upiId);
+                                    copyTextSafe(group.upiId);
                                     toast.show(`✓ Copied ${group.upiId}`);
                                   }}
                                   title="Click to copy UPI ID"
+                                  style={{ touchAction: 'manipulation' }}
                                 >
                                   <Copy size={10} /> {group.upiId}
                                 </span>
