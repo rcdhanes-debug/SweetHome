@@ -15,6 +15,15 @@ const SERVER = path.join(ROOT, 'server');
 const CLIENT = path.join(ROOT, 'client');
 const DATA_DIR = path.join(ROOT, 'data', 'db');
 const PIDS_FILE = path.join(ROOT, 'data', 'homehq.pids.json');
+
+// Load environment from server/.env if available
+try {
+  const envPath = path.join(SERVER, '.env');
+  if (fs.existsSync(envPath)) {
+    require(path.join(SERVER, 'node_modules', 'dotenv')).config({ path: envPath });
+  }
+} catch (_) {}
+
 const DB_PORT = process.env.HOMEHQ_DB_PORT || '27017';
 const DEV_PORT = '5173';
 const PROD_PORT = process.env.PORT || '5000';
@@ -84,6 +93,24 @@ function writePids() {
   }
 }
 
+function checkMongo(port = DB_PORT, timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const s = net.connect(Number(port), '127.0.0.1');
+    s.once('connect', () => {
+      s.destroy();
+      resolve(true);
+    });
+    s.once('error', () => {
+      s.destroy();
+      resolve(false);
+    });
+    setTimeout(() => {
+      s.destroy();
+      resolve(false);
+    }, timeoutMs);
+  });
+}
+
 function waitForMongo(timeoutMs = 120000) {
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve, reject) => {
@@ -149,20 +176,31 @@ process.on('SIGTERM', () => shutdown(0));
   ensure('server', SERVER);
   ensure('client', CLIENT);
 
-  const { MongoBinary } = require('mongodb-memory-server-core');
-
   if (prod) {
     log('Building client…');
     await runAsync(nodeCmd, [VITE, 'build'], { cwd: CLIENT });
   }
 
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  log('Starting MongoDB (first run uses the cached embedded binary)…');
-  const mongod = await MongoBinary.getPath();
-  spawnTrack('MongoDB', mongod, ['--dbpath', DATA_DIR, '--port', DB_PORT, '--bind_ip', '127.0.0.1', '--quiet']);
+  const mongoUri = process.env.MONGODB_URI || '';
+  const isRemoteMongo = mongoUri.startsWith('mongodb+srv://') || (!mongoUri.includes('127.0.0.1') && !mongoUri.includes('localhost') && mongoUri.startsWith('mongodb://'));
 
-  await waitForMongo();
-  log(`MongoDB ready on 127.0.0.1:${DB_PORT} (data stored in ${DATA_DIR})`);
+  if (isRemoteMongo) {
+    const masked = mongoUri.replace(/:\/\/[^@]+@/, '://***:***@');
+    log(`Using remote MongoDB from server/.env: ${masked}`);
+  } else {
+    const alreadyRunning = await checkMongo(DB_PORT);
+    if (alreadyRunning) {
+      log(`Existing MongoDB detected on 127.0.0.1:${DB_PORT}. Using it.`);
+    } else {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      log('Starting MongoDB (first run uses the cached embedded binary)…');
+      const { MongoBinary } = require('mongodb-memory-server-core');
+      const mongod = await MongoBinary.getPath();
+      spawnTrack('MongoDB', mongod, ['--dbpath', DATA_DIR, '--port', DB_PORT, '--bind_ip', '127.0.0.1', '--quiet']);
+      await waitForMongo();
+      log(`MongoDB ready on 127.0.0.1:${DB_PORT} (data stored in ${DATA_DIR})`);
+    }
+  }
 
   if (prod) {
     spawnTrack('Sweet Home Server', nodeCmd, ['index.js'], { cwd: SERVER });
@@ -170,7 +208,7 @@ process.on('SIGTERM', () => shutdown(0));
     openBrowser(`http://localhost:${PROD_PORT}/dashboard`);
     log(`Sweet Home running — http://localhost:${PROD_PORT}`);
   } else {
-    spawnTrack('Sweet Home Server', nodeCmd, ['--watch-path=.', 'index.js'], { cwd: SERVER });
+    spawnTrack('Sweet Home Server', nodeCmd, ['--watch', 'index.js'], { cwd: SERVER });
     spawnTrack('Sweet Home Client', nodeCmd, [VITE], { cwd: CLIENT });
     await new Promise((r) => setTimeout(r, 4500));
     openBrowser(`http://localhost:${DEV_PORT}/dashboard`);
@@ -180,7 +218,7 @@ process.on('SIGTERM', () => shutdown(0));
   log('Press Ctrl+C (or close this window) to stop Sweet Home.');
 
   // Keep the process alive while children run.
-  setInterval(() => {}, 1 << 30);
+  setInterval(() => { }, 1 << 30);
 })().catch((err) => {
   log(`Startup failed: ${err.message}`);
   shutdown(1);

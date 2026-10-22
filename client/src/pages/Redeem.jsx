@@ -12,7 +12,8 @@ import {
   Layers,
   List,
   Search,
-  Copy
+  Copy,
+  Zap
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -42,8 +43,7 @@ export default function Redeem() {
   const [noteInput, setNoteInput] = useState('');
   const [busy, setBusy] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [confirmPay, setConfirmPay] = useState(null); // redeem being closed
-  const [payerName, setPayerName] = useState('');     // who is marking it paid
+  const [copiedUpi, setCopiedUpi] = useState('');
   const [viewMode, setViewMode] = useState('grouped'); // 'grouped' (combined per person) | 'individual'
   const [openPage, setOpenPage] = useState(1);
   const [closedPage, setClosedPage] = useState(1);
@@ -54,9 +54,15 @@ export default function Redeem() {
     return u?.upiId || DEFAULT_UPI_IDS[name] || (name ? `${name.toLowerCase()}@okaxis` : '');
   };
 
-  const handleCopyAndPay = (upiId, amount) => {
+  const handleCopyUpi = (upiId, amount) => {
+    if (!upiId) {
+      toast.show('No UPI ID found for this person', 'error');
+      return;
+    }
     navigator.clipboard.writeText(upiId);
-    toast.show(`✓ UPI Copied! Amount: ₹${amount}`);
+    setCopiedUpi(upiId);
+    toast.show(`✓ Copied ${upiId} to clipboard! (Amount: ₹${amount || 0})`);
+    setTimeout(() => setCopiedUpi(''), 2500);
   };
 
   const handleOpenForm = () => {
@@ -144,44 +150,7 @@ export default function Redeem() {
     }
   };
 
-  // Close — no PIN, just name selection (supports single item or grouped items)
-  const handleConfirmPay = async () => {
-    if (!payerName) { toast.show('Please select your name', 'error'); return; }
-    const target = confirmPay;
-    setConfirmPay(null);
 
-    if (target?.type === 'group') {
-      setBusy(`group-${target.name}`);
-      try {
-        for (const it of target.items) {
-          await redeemApi.closeRedeem(payerName, it._id);
-        }
-        toast.show(`✓ Marked all ${target.items.length} requests for ${target.name} as paid (${formatCurrency(target.amount)})`);
-        await reloadRedeems();
-        await reloadExpenses();
-      } catch (err) {
-        toast.show(err?.response?.data?.message || err.message, 'error');
-      } finally {
-        setBusy('');
-        setPayerName('');
-      }
-    } else {
-      const r = target?.item || target;
-      if (!r?._id) return;
-      setBusy(`redeem-${r._id}`);
-      try {
-        await redeemApi.closeRedeem(payerName, r._id);
-        toast.show('✓ Marked paid — expense added & balance updated');
-        await reloadRedeems();
-        await reloadExpenses();
-      } catch (err) {
-        toast.show(err?.response?.data?.message || err.message, 'error');
-      } finally {
-        setBusy('');
-        setPayerName('');
-      }
-    }
-  };
 
   const confirmRemove = async () => {
     const target = confirmDelete;
@@ -326,7 +295,30 @@ export default function Redeem() {
             title="All clear! No pending payouts"
             subtitle="Everyone has been settled up. Spent money for the house? Click '+ Raise Request' above."
           />
-        ) : viewMode === 'grouped' ? (
+        ) : (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 12px',
+                borderRadius: '10px',
+                background: 'rgba(56, 189, 248, 0.08)',
+                border: '1px solid rgba(56, 189, 248, 0.22)',
+                marginBottom: '14px',
+                fontSize: '11.5px',
+                color: '#bae6fd',
+                lineHeight: 1.45
+              }}
+            >
+              <Zap size={14} style={{ color: '#38bdf8', flexShrink: 0 }} />
+              <span>
+                <strong>Auto-Settlement Active:</strong> Copy the UPI ID and pay via UPI. When the bank sends the debit SMS matching the amount and member name, SweetHome automatically settles the request and logs the expense!
+              </span>
+            </div>
+
+            {viewMode === 'grouped' ? (
           <>
             <div className="redeem-compact-list">
               {paginatedGroupedOpen.map((group) => (
@@ -370,31 +362,15 @@ export default function Redeem() {
                     <div className="redeem-compact-card__right">
                       <span className="redeem-compact-card__total">{formatCurrency(group.totalAmount)}</span>
                       <div className="redeem-compact-card__right-actions">
-                        <a
-                          href="intent://pay#Intent;scheme=upi;end"
-                          onClick={() => handleCopyAndPay(group.upiId, group.totalAmount)}
-                          className="btn btn--primary btn--xs"
-                          style={{ textDecoration: 'none', gap: '4px' }}
-                          title={`Copy & pay ₹${group.totalAmount} to ${group.upiId}`}
-                        >
-                          <Smartphone size={12} /> Pay
-                        </a>
                         <button
                           type="button"
-                          className="btn btn--ghost btn--xs"
-                          disabled={busy === `group-${group.personName}`}
-                          onClick={() =>
-                            setConfirmPay({
-                              type: 'group',
-                              items: group.items,
-                              amount: group.totalAmount,
-                              name: group.personName,
-                              upiId: group.upiId
-                            })
-                          }
-                          title={`Close all ${group.items.length} requests for ${group.personName}`}
+                          className="btn btn--primary btn--xs"
+                          onClick={() => handleCopyUpi(group.upiId, group.totalAmount)}
+                          style={{ gap: '5px' }}
+                          title={`Copy UPI ID: ${group.upiId}`}
                         >
-                          <CheckCircle2 size={12} /> {group.items.length > 1 ? 'Settle All' : 'Close'}
+                          {copiedUpi === group.upiId ? <CheckCircle2 size={12} style={{ color: '#fff' }} /> : <Copy size={12} />}
+                          <span>{copiedUpi === group.upiId ? 'Copied!' : 'Copy UPI ID'}</span>
                         </button>
                       </div>
                     </div>
@@ -422,19 +398,12 @@ export default function Redeem() {
                             <button
                               type="button"
                               className="btn btn--ghost btn--xs"
-                              disabled={busy === `redeem-${item._id}`}
-                              onClick={() =>
-                                setConfirmPay({
-                                  type: 'single',
-                                  item: item,
-                                  amount: item.amount,
-                                  name: group.personName,
-                                  upiId: item.upiId || group.upiId
-                                })
-                              }
-                              title="Settle this specific item"
+                              onClick={() => handleCopyUpi(item.upiId || group.upiId, item.amount)}
+                              style={{ gap: '4px' }}
+                              title={`Copy UPI ID: ${item.upiId || group.upiId}`}
                             >
-                              <CheckCircle2 size={11} /> Settle
+                              {copiedUpi === (item.upiId || group.upiId) ? <CheckCircle2 size={11} style={{ color: '#34d399' }} /> : <Copy size={11} />}
+                              <span>{copiedUpi === (item.upiId || group.upiId) ? 'Copied!' : 'Copy UPI'}</span>
                             </button>
                           )}
                           {isAdmin && (
@@ -500,31 +469,15 @@ export default function Redeem() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
-                    <a
-                      href="intent://pay#Intent;scheme=upi;end"
-                      onClick={() => handleCopyAndPay(r.upiId, r.amount)}
-                      className="btn btn--primary btn--xs"
-                      style={{ textDecoration: 'none', gap: '4px' }}
-                      title={`Pay ₹${r.amount} to ${r.upiId}`}
-                    >
-                      <Smartphone size={11} /> Pay
-                    </a>
                     <button
                       type="button"
-                      className="btn btn--ghost btn--xs"
-                      disabled={busy === `redeem-${r._id}`}
-                      onClick={() =>
-                        setConfirmPay({
-                          type: 'single',
-                          item: r,
-                          amount: r.amount,
-                          name: r.createdBy?.name,
-                          upiId: r.upiId
-                        })
-                      }
-                      title="Mark as settled"
+                      className="btn btn--primary btn--xs"
+                      onClick={() => handleCopyUpi(r.upiId, r.amount)}
+                      style={{ gap: '5px' }}
+                      title={`Copy UPI ID: ${r.upiId}`}
                     >
-                      <CheckCircle2 size={11} /> Close
+                      {copiedUpi === r.upiId ? <CheckCircle2 size={11} style={{ color: '#fff' }} /> : <Copy size={11} />}
+                      <span>{copiedUpi === r.upiId ? 'Copied!' : 'Copy UPI'}</span>
                     </button>
                   </div>
                 </div>
@@ -555,8 +508,9 @@ export default function Redeem() {
               </div>
             )}
           </>
-        )
-      ) : (
+        )}
+      </>
+    )) : (
         /* Settled History Tab */
         <>
           <div className="redeem-search-input">
@@ -750,57 +704,6 @@ export default function Redeem() {
         confirmLabel="Delete"
         danger
       />
-
-      {/* "Mark as Paid" — name picker only, no PIN */}
-      <BottomSheet
-        open={Boolean(confirmPay)}
-        onClose={() => { setConfirmPay(null); setPayerName(''); }}
-        title="Who paid this? 💸"
-      >
-        <p className="sheet-subtitle">
-          {formatCurrency(confirmPay?.amount || 0)} to {confirmPay?.name || confirmPay?.createdBy?.name || 'housemate'} ({confirmPay?.upiId || '—'})
-          {confirmPay?.type === 'group' && confirmPay?.items?.length > 1 && (
-            <span style={{ display: 'block', marginTop: '4px', color: '#60a5fa', fontWeight: 600 }}>
-              • Settle all {confirmPay.items.length} requests at once
-            </span>
-          )}
-        </p>
-        <p className="muted" style={{ fontSize: '13px', margin: '4px 0 12px' }}>
-          Select your name — this will close the request{confirmPay?.type === 'group' && confirmPay?.items?.length > 1 ? 's' : ''} and add {confirmPay?.type === 'group' && confirmPay?.items?.length > 1 ? 'them' : 'it'} as expense{confirmPay?.type === 'group' && confirmPay?.items?.length > 1 ? 's' : ''}.
-        </p>
-        <div className="field-label">Select your name</div>
-        <div className="name-grid" style={{ marginBottom: '16px' }}>
-          {housemateList.map((name) => (
-            <button
-              key={name}
-              type="button"
-              className={`name-chip ${payerName === name ? 'name-chip--active' : ''}`}
-              onClick={() => setPayerName(name)}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-        <div className="sheet-actions">
-          <button type="button" className="btn btn--ghost" onClick={() => { setConfirmPay(null); setPayerName(''); }}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn--primary"
-            disabled={!payerName || (confirmPay?.type === 'group' ? busy === `group-${confirmPay?.name}` : busy === `redeem-${(confirmPay?.item || confirmPay)?._id}`)}
-            onClick={handleConfirmPay}
-          >
-            {(confirmPay?.type === 'group' ? busy === `group-${confirmPay?.name}` : busy === `redeem-${(confirmPay?.item || confirmPay)?._id}`) ? (
-              <><span className="spinner" /> Saving…</>
-            ) : confirmPay?.type === 'group' && confirmPay?.items?.length > 1 ? (
-              `✓ Mark All ${confirmPay.items.length} Paid`
-            ) : (
-              '✓ Mark as Paid'
-            )}
-          </button>
-        </div>
-      </BottomSheet>
     </div>
   );
 }

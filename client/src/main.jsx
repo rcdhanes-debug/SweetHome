@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/global.css';
 
+import { registerServiceWorker } from './services/push';
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
@@ -10,14 +12,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 );
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    for (const registration of registrations) {
-      registration.unregister();
-    }
+  window.addEventListener('load', () => {
+    registerServiceWorker();
   });
 }
-if ('caches' in window) {
-  caches.keys().then((names) => {
-    names.forEach((name) => caches.delete(name));
-  });
-}
+

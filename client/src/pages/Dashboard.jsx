@@ -17,7 +17,8 @@ import {
   EyeOff,
   Copy,
   Sparkles,
-  Receipt
+  Receipt,
+  MessageSquare
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useApp } from '../context/AppContext';
@@ -35,6 +36,7 @@ import CategoryIcon from '../components/CategoryIcon';
 import EmptyState from '../components/EmptyState';
 import BottomSheet from '../components/BottomSheet';
 import ConfirmModal from '../components/ConfirmModal';
+import SmsDetailModal from '../components/SmsDetailModal';
 import PushNotificationBanner from '../components/PushNotificationBanner';
 import { formatCurrency, formatDate, todayDayName, deadlineInfo } from '../utils/format';
 
@@ -57,6 +59,7 @@ export default function Dashboard() {
   const [bankSyncing, setBankSyncing] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
   const [loadingTxns, setLoadingTxns] = useState(true);
+  const [selectedSmsTxn, setSelectedSmsTxn] = useState(null);
 
   const loadBank = async () => {
     try {
@@ -541,8 +544,33 @@ export default function Dashboard() {
                             {t.type === 'DEBIT' ? 'Debit' : 'Credit'}
                           </span>
                         </div>
-                        <div className="mini-ledger__meta">
-                          {formatDate(t.date || t.createdAt)} {t.source ? `• ${t.source}` : ''}{t.recipient && t.recipient !== t.description ? ` • ${t.recipient}` : ''}
+                        <div className="mini-ledger__meta" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span>{formatDate(t.date || t.createdAt)} {t.source ? `• ${t.source}` : ''}{t.recipient && t.recipient !== t.description ? ` • ${t.recipient}` : ''}</span>
+                          {t.rawMessage && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedSmsTxn(t);
+                              }}
+                              style={{
+                                background: 'rgba(56, 189, 248, 0.15)',
+                                color: '#38bdf8',
+                                border: '1px solid rgba(56, 189, 248, 0.3)',
+                                borderRadius: '4px',
+                                padding: '1px 5px',
+                                fontSize: '9px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}
+                              title="Click to view exact bank SMS received"
+                            >
+                              <MessageSquare size={9} /> SMS
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div
@@ -633,6 +661,13 @@ export default function Dashboard() {
           </button>
         </div>
       </BottomSheet>
+
+      {/* SMS Details Modal */}
+      <SmsDetailModal
+        open={Boolean(selectedSmsTxn)}
+        transaction={selectedSmsTxn}
+        onClose={() => setSelectedSmsTxn(null)}
+      />
     </div>
   );
 }

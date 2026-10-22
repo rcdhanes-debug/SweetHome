@@ -39,20 +39,33 @@ export async function subscribeToPush() {
     throw new Error('Notification permission denied.');
   }
 
-  const reg = await registerServiceWorker();
+  await registerServiceWorker();
+
+  const reg = await navigator.serviceWorker.ready;
   if (!reg) throw new Error('Service worker not available.');
 
-  const activeReg = await Promise.race([
-    navigator.serviceWorker.ready,
-    new Promise((resolve) => setTimeout(() => resolve(reg), 2000))
-  ]).catch(() => reg);
+  if (!reg.active) {
+    const sw = reg.installing || reg.waiting;
+    if (sw) {
+      await new Promise((resolve) => {
+        const handler = () => {
+          if (sw.state === 'activated' || reg.active) {
+            sw.removeEventListener('statechange', handler);
+            resolve();
+          }
+        };
+        sw.addEventListener('statechange', handler);
+        setTimeout(resolve, 3000);
+      });
+    }
+  }
 
   const publicKey = await getVapidPublicKey();
   if (!publicKey) throw new Error('Failed to retrieve VAPID public key from server.');
 
-  let sub = await activeReg.pushManager.getSubscription();
+  let sub = await reg.pushManager.getSubscription();
   if (!sub) {
-    sub = await activeReg.pushManager.subscribe({
+    sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey)
     });

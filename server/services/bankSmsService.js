@@ -287,9 +287,11 @@ function getPersonTokens(person) {
  * 4. Dice bigram similarity (handles typos, single-letter differences like 'gowtham' vs 'gautham')
  * 5. 10-digit phone / UPI handle matching
  */
+const BANK_STOPWORDS_REGEX = /\b(?:balance|bal|available|avl|debited|debit|credited|credit|account|acct|idfc|first|bank|transfer|deposited|received|payment|inr|rs|rrn|upi|ref|towards|amount|clear|closing|customer|team|sender)\b/gi;
+
 function matchPersonScore(person, recipientText = '', messageText = '') {
-  const normRecipient = String(recipientText || '').toLowerCase();
-  const normMessage = String(messageText || '').toLowerCase();
+  const normRecipient = String(recipientText || '').toLowerCase().replace(BANK_STOPWORDS_REGEX, ' ');
+  const normMessage = String(messageText || '').toLowerCase().replace(BANK_STOPWORDS_REGEX, ' ');
   const combined = (normRecipient + ' ' + normMessage).replace(/[^a-z0-9]/g, ' ');
   const compact = (normRecipient + ' ' + normMessage).replace(/[^a-z0-9]/g, '');
 
@@ -524,29 +526,27 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
           const recipientText = String(parsed.recipient || '').toLowerCase();
           const messageText = String(message || '').toLowerCase();
 
-          // 1. Check if an OPEN Redeem request matches this payout amount (single or combined)
+          // 1. Check if an OPEN Redeem request matches BOTH this payout amount AND the person's name or UPI
           const openRedeems = await Redeem.find({ closed: false, amount: parsed.amount }).populate('createdBy', 'name upiId phone');
 
           let matchedRedeem = null;
           let matchedGroup = null;
 
-          if (openRedeems.length === 1) {
-            matchedRedeem = openRedeems[0];
-          } else if (openRedeems.length > 1) {
-            // Pick candidate with highest fuzzy match score for name / UPI / nickname
-            let bestItem = null;
-            let highestScore = 0;
-            for (const r of openRedeems) {
-              const score = matchPersonScore(r.createdBy, recipientText, messageText);
-              if (score > highestScore) {
-                highestScore = score;
-                bestItem = r;
-              }
+          // Candidate must match person's name or UPI (score >= 60)
+          let bestSingleScore = 0;
+          for (const r of openRedeems) {
+            const score = matchPersonScore(r.createdBy, recipientText, messageText);
+            const upiHandle = r.upiId ? r.upiId.toLowerCase().split('@')[0] : '';
+            const upiMatch = upiHandle && upiHandle.length >= 3 && messageText.includes(upiHandle);
+            const effectiveScore = upiMatch ? 100 : score;
+
+            if (effectiveScore >= 60 && effectiveScore > bestSingleScore) {
+              bestSingleScore = effectiveScore;
+              matchedRedeem = r;
             }
-            matchedRedeem = bestItem || openRedeems[0];
           }
 
-          // If no single open redeem matched, check if parsed.amount equals the FULL COMBINED AMOUNT for any housemate
+          // If no single open redeem matched both amount and name, check combined group sum where person matches
           if (!matchedRedeem) {
             const allOpen = await Redeem.find({ closed: false }).populate('createdBy', 'name upiId phone');
             const groupsByPerson = new Map();
@@ -561,20 +561,17 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
             }
 
             const candidateGroups = Array.from(groupsByPerson.values()).filter((g) => g.total === parsed.amount);
-            if (candidateGroups.length === 1) {
-              matchedGroup = candidateGroups[0];
-            } else if (candidateGroups.length > 1) {
-              // Priority: match person name or UPI handle via fuzzy score
-              let bestGroup = null;
-              let highestScore = 0;
-              for (const g of candidateGroups) {
-                const score = matchPersonScore(g.user, recipientText, messageText);
-                if (score > highestScore) {
-                  highestScore = score;
-                  bestGroup = g;
-                }
+            let bestGroupScore = 0;
+            for (const g of candidateGroups) {
+              const score = matchPersonScore(g.user, recipientText, messageText);
+              const upiHandle = g.user?.upiId ? g.user.upiId.toLowerCase().split('@')[0] : '';
+              const upiMatch = upiHandle && upiHandle.length >= 3 && messageText.includes(upiHandle);
+              const effectiveScore = upiMatch ? 100 : score;
+
+              if (effectiveScore >= 60 && effectiveScore > bestGroupScore) {
+                bestGroupScore = effectiveScore;
+                matchedGroup = g;
               }
-              matchedGroup = bestGroup || candidateGroups[0];
             }
           }
 
@@ -703,19 +700,17 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
             }).populate('createdBy', 'name upiId phone');
 
             let matchedClosed = null;
-            if (closedRedeems.length === 1) {
-              matchedClosed = closedRedeems[0];
-            } else if (closedRedeems.length > 1) {
-              let bestItem = null;
-              let highestScore = 0;
-              for (const r of closedRedeems) {
-                const score = matchPersonScore(r.createdBy, recipientText, messageText);
-                if (score > highestScore) {
-                  highestScore = score;
-                  bestItem = r;
-                }
+            let bestClosedScore = 0;
+            for (const r of closedRedeems) {
+              const score = matchPersonScore(r.createdBy, recipientText, messageText);
+              const upiHandle = r.upiId ? r.upiId.toLowerCase().split('@')[0] : '';
+              const upiMatch = upiHandle && upiHandle.length >= 3 && messageText.includes(upiHandle);
+              const effectiveScore = upiMatch ? 100 : score;
+
+              if (effectiveScore >= 60 && effectiveScore > bestClosedScore) {
+                bestClosedScore = effectiveScore;
+                matchedClosed = r;
               }
-              matchedClosed = bestItem || closedRedeems[0];
             }
 
             // 2b. Full combined sum check for recently closed
@@ -737,19 +732,17 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
               }
 
               const candidateClosedGroups = Array.from(closedGroups.values()).filter((g) => g.total === parsed.amount);
-              if (candidateClosedGroups.length === 1) {
-                matchedClosedGroup = candidateClosedGroups[0];
-              } else if (candidateClosedGroups.length > 1) {
-                let bestG = null;
-                let highestScore = 0;
-                for (const g of candidateClosedGroups) {
-                  const score = matchPersonScore(g.user, recipientText, messageText);
-                  if (score > highestScore) {
-                    highestScore = score;
-                    bestG = g;
-                  }
+              let bestClosedGroupScore = 0;
+              for (const g of candidateClosedGroups) {
+                const score = matchPersonScore(g.user, recipientText, messageText);
+                const upiHandle = g.user?.upiId ? g.user.upiId.toLowerCase().split('@')[0] : '';
+                const upiMatch = upiHandle && upiHandle.length >= 3 && messageText.includes(upiHandle);
+                const effectiveScore = upiMatch ? 100 : score;
+
+                if (effectiveScore >= 60 && effectiveScore > bestClosedGroupScore) {
+                  bestClosedGroupScore = effectiveScore;
+                  matchedClosedGroup = g;
                 }
-                matchedClosedGroup = bestG || candidateClosedGroups[0];
               }
             }
 

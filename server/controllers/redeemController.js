@@ -38,9 +38,9 @@ const close = asyncHandler(async (req, res) => {
   const { closedByName } = req.body || {};
   const item = await redeem.setRedeemClosed(req.params.id, { closed: true, closedByName: closedByName || 'Unknown' });
 
-  // Look up the settler (Ashwin) by name to use as paidBy in the expense
-  const settler = closedByName ? await User.findOne({ name: closedByName }) : null;
-  const settlerOrCreator = settler?._id || item.createdBy._id || item.createdBy;
+  // The expense paidBy = the redeem CREATOR (who incurred the cost and gets reimbursed).
+  // The settler (who physically sent the money) is tracked in closedByName/closedBy on the Redeem doc.
+  const redeemCreatorId = item.createdBy?._id || item.createdBy;
 
   // Cross-check if a matching BankTransaction DEBIT arrived today to prevent double counting
   const startOfDay = new Date();
@@ -67,7 +67,7 @@ const close = asyncHandler(async (req, res) => {
     if (expense) {
       expense.description = item.note ? `Redeem: ${item.note}` : `Redeem payout — ${item.createdBy?.name || 'housemate'}`;
       expense.redeemRef = item._id;
-      if (settlerOrCreator) expense.paidBy = settlerOrCreator;
+      if (redeemCreatorId) expense.paidBy = redeemCreatorId;
       await expense.save();
     }
   }
@@ -80,8 +80,8 @@ const close = asyncHandler(async (req, res) => {
       category: 'Misc',
       description: item.note ? `Redeem: ${item.note}` : `Redeem payout — ${item.createdBy?.name || 'housemate'}`,
       expenseDate: today,
-      paidBy: settlerOrCreator,
-      createdBy: settlerOrCreator,
+      paidBy: redeemCreatorId,
+      createdBy: redeemCreatorId,
       bankTransactionRef: item.bankTransactionRef || null,
       redeemRef: item._id
     });
@@ -93,7 +93,7 @@ const close = asyncHandler(async (req, res) => {
 
   await audit.log({
     action: 'REDEEM_CLOSED',
-    performedBy: settlerOrCreator,
+    performedBy: redeemCreatorId,
     details: {
       id: item._id,
       amount: item.amount,

@@ -19,7 +19,8 @@ import {
   Check,
   ShieldCheck,
   Eye,
-  EyeOff
+  EyeOff,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +33,7 @@ import StatCard from '../components/StatCard';
 import ExpenseForm from '../components/ExpenseForm';
 import BottomSheet from '../components/BottomSheet';
 import ConfirmModal from '../components/ConfirmModal';
+import SmsDetailModal from '../components/SmsDetailModal';
 import Confetti from '../components/Confetti';
 import Skeleton from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -56,6 +58,9 @@ export default function Expenses() {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 8;
+
+  // Selected SMS for detail modal view
+  const [selectedSmsTxn, setSelectedSmsTxn] = useState(null);
 
   // Manual Expense modal
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -578,18 +583,47 @@ export default function Expenses() {
                           Redeem Payout
                         </span>
                       )}
-                      <span
-                        style={{
-                          fontSize: '9.5px',
-                          padding: '1px 5px',
-                          borderRadius: '4px',
-                          fontWeight: 700,
-                          background: t.source === 'MANUAL' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.15)',
-                          color: t.source === 'MANUAL' ? '#818cf8' : '#34d399'
-                        }}
-                      >
-                        {t.source === 'MANUAL' ? 'Manual' : 'SMS Alert'}
-                      </span>
+                      {t.rawMessage ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSmsTxn(t);
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '9.5px',
+                            padding: '2px 8px',
+                            borderRadius: '5px',
+                            fontWeight: 700,
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            color: '#34d399',
+                            border: '1px solid rgba(16, 185, 129, 0.35)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            touchAction: 'manipulation'
+                          }}
+                          title="Click to view exact bank SMS received"
+                        >
+                          <MessageSquare size={10} style={{ color: '#38bdf8' }} />
+                          <span>SMS Alert</span>
+                        </button>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: '9.5px',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            background: t.source === 'MANUAL' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.15)',
+                            color: t.source === 'MANUAL' ? '#818cf8' : '#34d399'
+                          }}
+                        >
+                          {t.source === 'MANUAL' ? 'Manual' : 'SMS Alert'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -690,6 +724,13 @@ export default function Expenses() {
           onCancel={() => setSheetOpen(false)}
         />
       </BottomSheet>
+
+      {/* SMS Details Modal */}
+      <SmsDetailModal
+        open={Boolean(selectedSmsTxn)}
+        transaction={selectedSmsTxn}
+        onClose={() => setSelectedSmsTxn(null)}
+      />
     </div>
   );
 }

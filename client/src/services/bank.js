@@ -4,8 +4,12 @@ const auth = (token) => ({ headers: { Authorization: `Bearer ${token}` } });
 
 export const getBankBalance = () => api.get('/bank/balance');
 
-export const getBankTransactions = (limit = 50) =>
-  api.get('/bank/transactions', { params: { limit } });
+export const getBankTransactions = (limit = 50, month = null) => {
+  const params = { limit };
+  if (month) params.month = month;
+  return api.get('/bank/transactions', { params });
+};
+
 
 export const syncBankBalance = () => api.post('/bank/sync');
 
