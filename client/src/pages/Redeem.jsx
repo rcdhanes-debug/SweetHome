@@ -495,168 +495,10 @@ export default function Redeem() {
               </span>
             </div>
 
-            {/* ─── WAITING FOR CONFIRMATION CATEGORY ─── */}
-            {waitingOpen.length > 0 && (
-              <section className="redeem-waiting-section">
-                <div className="redeem-waiting-header">
-                  <div className="redeem-waiting-title">
-                    <span className="waiting-pulse-dot" />
-                    <Clock size={16} />
-                    <span>Waiting for Confirmation ({waitingOpen.length})</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button
-                      type="button"
-                      className="btn btn--restore btn--xs"
-                      onClick={() => handleRestore(waitingOpen)}
-                      title="Restore all waiting requests back to Open"
-                    >
-                      <RotateCcw size={12} /> Restore All
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ fontSize: '11px', color: '#fde68a', opacity: 0.9, marginBottom: '10px' }}>
-                  Awaiting debit SMS for matching amount & name within 2 minutes. Auto-restores to Open on timeout.
-                </div>
-
-                {viewMode === 'grouped' ? (
-                  <div className="redeem-compact-list">
-                    {groupedWaiting.map((group) => (
-                      <div key={`waiting-${group.personName}`} className="redeem-waiting-card">
-                        <div className="redeem-waiting-card__top">
-                          <div className="redeem-compact-card__left">
-                            <div className="redeem-compact-card__avatar" style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}>
-                              {group.personName.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="redeem-compact-card__person-meta">
-                              <div className="redeem-compact-card__name-row">
-                                <span className="redeem-compact-card__name">{group.personName}</span>
-                                <span
-                                  className="redeem-compact-card__upi-pill"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(group.upiId);
-                                    toast.show(`✓ Copied ${group.upiId}`);
-                                  }}
-                                  title="Click to copy UPI ID"
-                                >
-                                  <Copy size={10} /> {group.upiId}
-                                </span>
-                                <span className="redeem-waiting-badge">
-                                  <Clock size={11} /> {formatRemainingTime(group.expiresAt, now)}
-                                </span>
-                                {group.items.length > 1 && (
-                                  <span
-                                    className="badge"
-                                    style={{
-                                      background: 'rgba(245, 158, 11, 0.2)',
-                                      color: '#fbbf24',
-                                      fontSize: '10px',
-                                      padding: '1px 6px',
-                                      fontWeight: 700
-                                    }}
-                                  >
-                                    {group.items.length} items
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="redeem-waiting-card__actions">
-                            <span className="redeem-compact-card__total" style={{ color: '#fbbf24' }}>
-                              {formatCurrency(group.totalAmount)}
-                            </span>
-                            <button
-                              type="button"
-                              className="btn btn--restore btn--xs"
-                              onClick={() => handleRestore(group.items)}
-                              title="Restore this group back to Open requests"
-                            >
-                              <RotateCcw size={12} /> Restore
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Nested waiting items */}
-                        <div className="redeem-compact-products" style={{ background: 'rgba(0,0,0,0.3)', borderColor: 'rgba(245, 158, 11, 0.15)' }}>
-                          {group.items.map((item, idx) => (
-                            <div key={`wait-it-${item._id}`} className="redeem-compact-item-row" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <div className="redeem-compact-item-desc">
-                                  <span style={{ color: 'var(--muted)', marginRight: '6px', fontSize: '11px', fontWeight: 700 }}>
-                                    {idx + 1}.
-                                  </span>
-                                  {item.note || 'Redeem item (no note)'}
-                                </div>
-                                <div className="redeem-compact-item-meta">
-                                  {formatDate(item.createdAt)} • {formatTime(item.createdAt)}
-                                </div>
-                              </div>
-                              <div className="redeem-compact-item-right">
-                                <span className="redeem-compact-item-amt" style={{ color: '#fbbf24' }}>
-                                  {formatCurrency(item.amount)}
-                                </span>
-                                {group.items.length > 1 && (
-                                  <button
-                                    type="button"
-                                    className="btn btn--ghost btn--xs"
-                                    onClick={() => handleRestore([item])}
-                                    title="Restore this item back to Open"
-                                    style={{ fontSize: '10.5px' }}
-                                  >
-                                    <RotateCcw size={10} /> Restore
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  /* Flat Waiting list */
-                  <div className="nb-list card" style={{ padding: '4px 12px', background: 'rgba(15, 23, 42, 0.6)', borderColor: 'rgba(245, 158, 11, 0.22)' }}>
-                    {waitingOpen.map((r) => (
-                      <div key={`wait-flat-${r._id}`} className="nb-row" style={{ padding: '10px 0' }}>
-                        <div className="nb-row__icon" style={{ width: '32px', height: '32px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
-                          <Clock size={16} />
-                        </div>
-                        <div className="nb-row__body">
-                          <div className="nb-row__text" style={{ fontSize: '13.5px', color: '#fbbf24' }}>
-                            {formatCurrency(r.amount)}
-                            <span className="redeem-waiting-badge" style={{ marginLeft: '6px' }}>
-                              <Clock size={10} /> {formatRemainingTime(waitingMap[r._id]?.expiresAt || 0, now)}
-                            </span>
-                          </div>
-                          <div className="redeem-upi" style={{ fontSize: '11.5px' }}>{r.upiId}</div>
-                          {r.note && <div className="nb-row__desc" style={{ fontSize: '12px' }}>{r.note}</div>}
-                          <div className="nb-row__meta" style={{ fontSize: '10.5px' }}>
-                            Raised by {r.createdBy?.name || '—'} • {formatDate(r.createdAt)} • {formatTime(r.createdAt)}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <button
-                            type="button"
-                            className="btn btn--restore btn--xs"
-                            onClick={() => handleRestore([r])}
-                            title="Restore back to Open"
-                          >
-                            <RotateCcw size={12} /> Restore
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
-
-            {/* ─── REGULAR OPEN PAYOUTS ─── */}
+            {/* ─── REGULAR OPEN PAYOUTS (TOP) ─── */}
             {regularOpen.length === 0 && waitingOpen.length > 0 ? (
-              <div className="card" style={{ padding: '20px', textAlign: 'center', color: 'var(--muted)', fontSize: '12.5px' }}>
-                All pending requests are currently in <strong>Waiting for Confirmation</strong> above.
+              <div className="card" style={{ padding: '20px', textAlign: 'center', color: 'var(--muted)', fontSize: '12.5px', marginBottom: '14px' }}>
+                All pending requests have been copied and are in <strong>Waiting for Confirmation</strong> below.
                 <br />
                 They will automatically return here after 2 minutes if no SMS arrives, or you can click <strong>Restore</strong> anytime.
               </div>
@@ -851,6 +693,164 @@ export default function Redeem() {
             )}
           </>
         )}
+
+            {/* ─── WAITING FOR CONFIRMATION CATEGORY (MOVED TO LAST) ─── */}
+            {waitingOpen.length > 0 && (
+              <section className="redeem-waiting-section" style={{ marginTop: regularOpen.length > 0 ? '22px' : '0' }}>
+                <div className="redeem-waiting-header">
+                  <div className="redeem-waiting-title">
+                    <span className="waiting-pulse-dot" />
+                    <Clock size={16} />
+                    <span>Waiting for Confirmation ({waitingOpen.length})</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn btn--restore btn--xs"
+                      onClick={() => handleRestore(waitingOpen)}
+                      title="Restore all waiting requests back to Open"
+                    >
+                      <RotateCcw size={12} /> Restore All
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '11px', color: '#fde68a', opacity: 0.9, marginBottom: '10px' }}>
+                  Awaiting debit SMS for matching amount & name within 2 minutes. Auto-restores to Open on timeout.
+                </div>
+
+                {viewMode === 'grouped' ? (
+                  <div className="redeem-compact-list">
+                    {groupedWaiting.map((group) => (
+                      <div key={`waiting-${group.personName}`} className="redeem-waiting-card">
+                        <div className="redeem-waiting-card__top">
+                          <div className="redeem-compact-card__left">
+                            <div className="redeem-compact-card__avatar" style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}>
+                              {group.personName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="redeem-compact-card__person-meta">
+                              <div className="redeem-compact-card__name-row">
+                                <span className="redeem-compact-card__name">{group.personName}</span>
+                                <span
+                                  className="redeem-compact-card__upi-pill"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(group.upiId);
+                                    toast.show(`✓ Copied ${group.upiId}`);
+                                  }}
+                                  title="Click to copy UPI ID"
+                                >
+                                  <Copy size={10} /> {group.upiId}
+                                </span>
+                                <span className="redeem-waiting-badge">
+                                  <Clock size={11} /> {formatRemainingTime(group.expiresAt, now)}
+                                </span>
+                                {group.items.length > 1 && (
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      background: 'rgba(245, 158, 11, 0.2)',
+                                      color: '#fbbf24',
+                                      fontSize: '10px',
+                                      padding: '1px 6px',
+                                      fontWeight: 700
+                                    }}
+                                  >
+                                    {group.items.length} items
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="redeem-waiting-card__actions">
+                            <span className="redeem-compact-card__total" style={{ color: '#fbbf24' }}>
+                              {formatCurrency(group.totalAmount)}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn--restore btn--xs"
+                              onClick={() => handleRestore(group.items)}
+                              title="Restore this group back to Open requests"
+                            >
+                              <RotateCcw size={12} /> Restore
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Nested waiting items */}
+                        <div className="redeem-compact-products" style={{ background: 'rgba(0,0,0,0.3)', borderColor: 'rgba(245, 158, 11, 0.15)' }}>
+                          {group.items.map((item, idx) => (
+                            <div key={`wait-it-${item._id}`} className="redeem-compact-item-row" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div className="redeem-compact-item-desc">
+                                  <span style={{ color: 'var(--muted)', marginRight: '6px', fontSize: '11px', fontWeight: 700 }}>
+                                    {idx + 1}.
+                                  </span>
+                                  {item.note || 'Redeem item (no note)'}
+                                </div>
+                                <div className="redeem-compact-item-meta">
+                                  {formatDate(item.createdAt)} • {formatTime(item.createdAt)}
+                                </div>
+                              </div>
+                              <div className="redeem-compact-item-right">
+                                <span className="redeem-compact-item-amt" style={{ color: '#fbbf24' }}>
+                                  {formatCurrency(item.amount)}
+                                </span>
+                                {group.items.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="btn btn--ghost btn--xs"
+                                    onClick={() => handleRestore([item])}
+                                    title="Restore this item back to Open"
+                                    style={{ fontSize: '10.5px' }}
+                                  >
+                                    <RotateCcw size={10} /> Restore
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Flat Waiting list */
+                  <div className="nb-list card" style={{ padding: '4px 12px', background: 'rgba(15, 23, 42, 0.6)', borderColor: 'rgba(245, 158, 11, 0.22)' }}>
+                    {waitingOpen.map((r) => (
+                      <div key={`wait-flat-${r._id}`} className="nb-row" style={{ padding: '10px 0' }}>
+                        <div className="nb-row__icon" style={{ width: '32px', height: '32px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+                          <Clock size={16} />
+                        </div>
+                        <div className="nb-row__body">
+                          <div className="nb-row__text" style={{ fontSize: '13.5px', color: '#fbbf24' }}>
+                            {formatCurrency(r.amount)}
+                            <span className="redeem-waiting-badge" style={{ marginLeft: '6px' }}>
+                              <Clock size={10} /> {formatRemainingTime(waitingMap[r._id]?.expiresAt || 0, now)}
+                            </span>
+                          </div>
+                          <div className="redeem-upi" style={{ fontSize: '11.5px' }}>{r.upiId}</div>
+                          {r.note && <div className="nb-row__desc" style={{ fontSize: '12px' }}>{r.note}</div>}
+                          <div className="nb-row__meta" style={{ fontSize: '10.5px' }}>
+                            Raised by {r.createdBy?.name || '—'} • {formatDate(r.createdAt)} • {formatTime(r.createdAt)}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            className="btn btn--restore btn--xs"
+                            onClick={() => handleRestore([r])}
+                            title="Restore back to Open"
+                          >
+                            <RotateCcw size={12} /> Restore
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
       </>
     )) : (
         /* Settled History Tab */
