@@ -441,6 +441,109 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
     });
 
     if (!existingTxn) {
+      // ─── BALANCE RECONCILIATION & UNKNOWN EXPENSE GAP FILL ───
+      // Look for previous balance, if that matches add,
+      // otherwise add an Expense for that gap named "UNKNOWN EXPENSE", then add coming expense
+      if (newBalance > 0) {
+        try {
+          // Find the latest previous transaction with a valid balanceAfter on or before this smsDate
+          const prevTxn = await BankTransaction.findOne({
+            bankName: BANK_NAME,
+            balanceAfter: { $gt: 0 },
+            date: { $lte: smsDate }
+          }).sort({ date: -1, _id: -1 });
+
+          let prevBalance = prevTxn ? prevTxn.balanceAfter : null;
+
+          // If no previous transaction with balanceAfter found, check current BankBalance
+          if (prevBalance === null || prevBalance === undefined) {
+            const curBalDoc = await BankBalance.findOne({ bankName: BANK_NAME });
+            if (curBalDoc && curBalDoc.balance > 0) {
+              prevBalance = curBalDoc.balance;
+            }
+          }
+
+          if (prevBalance && prevBalance > 0) {
+            // Expected balance after this transaction
+            const expectedBalance = parsed.type === 'DEBIT'
+              ? Math.round((prevBalance - parsed.amount) * 100) / 100
+              : Math.round((prevBalance + parsed.amount) * 100) / 100;
+
+            // Gap is the difference between what balance should be vs what SMS actually reported
+            const gap = Math.round((expectedBalance - newBalance) * 100) / 100;
+
+            // If gap >= 1, money left the account unrecorded -> Add UNKNOWN EXPENSE for that gap first
+            if (gap >= 1) {
+              const Expense = require('../models/Expense');
+              const audit = require('./auditService');
+              const defaultAdmin = (await User.findOne({ role: 'admin' })) || (await User.findOne());
+              const settlerId = defaultAdmin?._id || null;
+
+              const gapDate = new Date(smsDate.getTime() - 1000); // 1 sec before coming expense
+              const gapBalanceAfter = Math.round((prevBalance - gap) * 100) / 100;
+
+              const gapTxnDoc = await BankTransaction.create({
+                bankName: BANK_NAME,
+                accountLast4,
+                type: 'DEBIT',
+                amount: gap,
+                balanceAfter: gapBalanceAfter,
+                recipient: 'Unknown',
+                description: 'UNKNOWN EXPENSE',
+                reference: 'BALANCE_GAP',
+                date: gapDate,
+                source: 'SMS',
+                rawMessage: `Auto-reconciled: Detected unrecorded balance gap of ₹${gap} before incoming ${parsed.type} of ₹${parsed.amount}. (Previous balance: ₹${prevBalance}, Expected: ₹${expectedBalance}, Actual: ₹${newBalance}).`,
+                sender: 'SweetHome Reconciler',
+                isDemo: simulated
+              });
+
+              let gapExpenseDoc = null;
+              if (settlerId) {
+                gapExpenseDoc = await Expense.create({
+                  amount: gap,
+                  category: 'Misc',
+                  description: 'UNKNOWN EXPENSE',
+                  expenseDate: gapDate,
+                  paidBy: settlerId,
+                  createdBy: settlerId,
+                  bankTransactionRef: gapTxnDoc._id
+                });
+
+                await audit.log({
+                  action: 'EXPENSE_CREATED',
+                  performedBy: settlerId,
+                  details: {
+                    amount: gap,
+                    category: 'Misc',
+                    description: 'UNKNOWN EXPENSE',
+                    reason: 'Auto-reconciled unrecorded balance gap',
+                    previousBalance: prevBalance,
+                    expectedBalance,
+                    actualBalance: newBalance,
+                    gapTransactionId: gapTxnDoc._id,
+                    gapExpenseId: gapExpenseDoc._id
+                  }
+                });
+              }
+
+              parsed.reconciledGap = {
+                gapAmount: gap,
+                previousBalance: prevBalance,
+                expectedBalance,
+                actualBalance: newBalance,
+                gapTransactionId: gapTxnDoc._id,
+                gapExpenseId: gapExpenseDoc?._id
+              };
+
+              console.log(`[BankSync] Balance gap detected: Created UNKNOWN EXPENSE of ₹${gap} (Prev: ₹${prevBalance} -> Gap Bal: ₹${gapBalanceAfter} -> Incoming: ₹${newBalance})`);
+            }
+          }
+        } catch (gapErr) {
+          console.error('[BankSync] Error during balance reconciliation gap check:', gapErr);
+        }
+      }
+
       transactionDoc = await BankTransaction.create({
         bankName: BANK_NAME,
         accountLast4,

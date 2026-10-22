@@ -607,8 +607,8 @@ export default function Expenses() {
                           }}
                           title="Click to view exact bank SMS received"
                         >
-                          <MessageSquare size={10} style={{ color: '#38bdf8' }} />
-                          <span>SMS Alert</span>
+                          <MessageSquare size={10} style={{ color: t.description === 'UNKNOWN EXPENSE' ? '#fbbf24' : '#38bdf8' }} />
+                          <span>{t.description === 'UNKNOWN EXPENSE' ? 'Reconciled SMS' : 'SMS Alert'}</span>
                         </button>
                       ) : (
                         <span
@@ -617,11 +617,12 @@ export default function Expenses() {
                             padding: '1px 5px',
                             borderRadius: '4px',
                             fontWeight: 700,
-                            background: t.source === 'MANUAL' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.15)',
-                            color: t.source === 'MANUAL' ? '#818cf8' : '#34d399'
+                            background: t.description === 'UNKNOWN EXPENSE' ? 'rgba(245, 158, 11, 0.18)' : (t.source === 'MANUAL' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.15)'),
+                            color: t.description === 'UNKNOWN EXPENSE' ? '#fbbf24' : (t.source === 'MANUAL' ? '#818cf8' : '#34d399'),
+                            border: t.description === 'UNKNOWN EXPENSE' ? '1px solid rgba(245, 158, 11, 0.3)' : 'none'
                           }}
                         >
-                          {t.source === 'MANUAL' ? 'Manual' : 'SMS Alert'}
+                          {t.description === 'UNKNOWN EXPENSE' ? '⚠️ Auto Gap' : (t.source === 'MANUAL' ? 'Manual' : 'SMS Alert')}
                         </span>
                       )}
                     </div>

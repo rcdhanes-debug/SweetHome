@@ -217,6 +217,67 @@ async function syncBankBalanceFromEmail() {
         });
 
         if (!existingTxn) {
+          const newBal = extracted.balance;
+          if (newBal > 0) {
+            try {
+              const prevTxn = await BankTransaction.findOne({
+                bankName: BANK_NAME,
+                balanceAfter: { $gt: 0 },
+                date: { $lte: emailDate }
+              }).sort({ date: -1, _id: -1 });
+
+              let prevBalance = prevTxn ? prevTxn.balanceAfter : null;
+              if (!prevBalance) {
+                const balDoc = await BankBalance.findOne({ bankName: BANK_NAME });
+                if (balDoc && balDoc.balance > 0) prevBalance = balDoc.balance;
+              }
+
+              if (prevBalance && prevBalance > 0) {
+                const expBal = extracted.lastTransactionType === 'DEBIT'
+                  ? Math.round((prevBalance - extracted.lastTransactionAmount) * 100) / 100
+                  : Math.round((prevBalance + extracted.lastTransactionAmount) * 100) / 100;
+                const gap = Math.round((expBal - newBal) * 100) / 100;
+
+                if (gap >= 1) {
+                  const User = require('../models/User');
+                  const Expense = require('../models/Expense');
+                  const defaultAdmin = (await User.findOne({ role: 'admin' })) || (await User.findOne());
+                  const settlerId = defaultAdmin?._id || null;
+                  const gapDate = new Date(emailDate.getTime() - 1000);
+                  const gapBalAfter = Math.round((prevBalance - gap) * 100) / 100;
+
+                  const gapTxn = await BankTransaction.create({
+                    bankName: BANK_NAME,
+                    accountLast4: extracted.accountLast4,
+                    type: 'DEBIT',
+                    amount: gap,
+                    balanceAfter: gapBalAfter,
+                    recipient: 'Unknown',
+                    description: 'UNKNOWN EXPENSE',
+                    reference: 'BALANCE_GAP',
+                    date: gapDate,
+                    emailSubject: `Balance gap of ₹${gap} auto-reconciled`,
+                    isDemo: false
+                  });
+
+                  if (settlerId) {
+                    await Expense.create({
+                      amount: gap,
+                      category: 'Misc',
+                      description: 'UNKNOWN EXPENSE',
+                      expenseDate: gapDate,
+                      paidBy: settlerId,
+                      createdBy: settlerId,
+                      bankTransactionRef: gapTxn._id
+                    });
+                  }
+                }
+              }
+            } catch (emailGapErr) {
+              console.error('[BankSync] Error during email gap reconciliation:', emailGapErr);
+            }
+          }
+
           await BankTransaction.create({
             bankName: BANK_NAME,
             accountLast4: extracted.accountLast4,
