@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   HandCoins,
   Plus,
@@ -13,7 +13,9 @@ import {
   List,
   Search,
   Copy,
-  Zap
+  Zap,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +30,40 @@ import { HOUSEMATES, DEFAULT_UPI_IDS } from '../constants';
 import * as expenseApi from '../services/expenses';
 
 const UPI_PATTERN = /^[^\s@]+@[a-zA-Z]{2,}$/;
+const WAITING_STORAGE_KEY = 'sweethome_waiting_confirmations';
+
+const loadWaitingMap = () => {
+  try {
+    const raw = localStorage.getItem(WAITING_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    const now = Date.now();
+    const valid = {};
+    for (const [id, item] of Object.entries(parsed)) {
+      if (item && item.expiresAt > now) {
+        valid[id] = item;
+      }
+    }
+    return valid;
+  } catch {
+    return {};
+  }
+};
+
+const saveWaitingMap = (map) => {
+  try {
+    localStorage.setItem(WAITING_STORAGE_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.error('Failed to save waiting confirmations', e);
+  }
+};
+
+const formatRemainingTime = (expiresAt, now) => {
+  const diffSec = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+  const mins = Math.floor(diffSec / 60);
+  const secs = diffSec % 60;
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+};
 
 export default function Redeem() {
   const { redeems = [], users = [], loading, reloadRedeems, reloadExpenses } = useApp();
@@ -44,25 +80,128 @@ export default function Redeem() {
   const [busy, setBusy] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [copiedUpi, setCopiedUpi] = useState('');
+  const [waitingMap, setWaitingMap] = useState(loadWaitingMap);
+  const [now, setNow] = useState(Date.now());
   const [viewMode, setViewMode] = useState('grouped'); // 'grouped' (combined per person) | 'individual'
   const [openPage, setOpenPage] = useState(1);
   const [closedPage, setClosedPage] = useState(1);
   const pageSize = 8;
+
+  // 1-second interval to update countdown & auto-restore expired items after 2 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentNow = Date.now();
+      setNow(currentNow);
+
+      setWaitingMap((prev) => {
+        let hasExpired = false;
+        const next = { ...prev };
+        for (const [id, entry] of Object.entries(prev)) {
+          if (entry.expiresAt <= currentNow) {
+            delete next[id];
+            hasExpired = true;
+          }
+        }
+        if (hasExpired) {
+          saveWaitingMap(next);
+          toast.show('2 mins elapsed with no SMS confirmation. Restored to Open.');
+          return next;
+        }
+        return prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [toast]);
+
+  // If there are items waiting confirmation, poll redeems every 4s so auto-close from SMS is fast
+  useEffect(() => {
+    const waitingCount = Object.keys(waitingMap).length;
+    if (waitingCount === 0) return;
+
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        reloadRedeems();
+      }
+    }, 4000);
+
+    return () => clearInterval(pollTimer);
+  }, [waitingMap, reloadRedeems]);
+
+  // Clean up any items from waitingMap that have been settled/closed on the server
+  useEffect(() => {
+    if (Object.keys(waitingMap).length === 0) return;
+    setWaitingMap((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const id of Object.keys(prev)) {
+        const found = redeems.find((r) => r._id === id);
+        if (found && found.closed) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      if (changed) {
+        saveWaitingMap(next);
+        return next;
+      }
+      return prev;
+    });
+  }, [redeems, waitingMap]);
 
   const getUpiFor = (name) => {
     const u = users.find((x) => x.name === name);
     return u?.upiId || DEFAULT_UPI_IDS[name] || (name ? `${name.toLowerCase()}@okaxis` : '');
   };
 
-  const handleCopyUpi = (upiId, amount) => {
+  const handleCopyUpi = (upiId, amount, itemsToWait = []) => {
     if (!upiId) {
       toast.show('No UPI ID found for this person', 'error');
       return;
     }
     navigator.clipboard.writeText(upiId);
     setCopiedUpi(upiId);
-    toast.show(`✓ Copied ${upiId} to clipboard! (Amount: ₹${amount || 0})`);
+
+    const items = Array.isArray(itemsToWait) ? itemsToWait : [itemsToWait];
+    if (items.length > 0) {
+      const currentNow = Date.now();
+      const expiresAt = currentNow + 120 * 1000; // 2 minutes
+      setWaitingMap((prev) => {
+        const next = { ...prev };
+        for (const it of items) {
+          if (it && it._id) {
+            next[it._id] = {
+              id: it._id,
+              amount: it.amount,
+              personName: it.createdBy?.name || 'Housemate',
+              upiId,
+              copiedAt: currentNow,
+              expiresAt
+            };
+          }
+        }
+        saveWaitingMap(next);
+        return next;
+      });
+      toast.show(`✓ Copied ${upiId}! Moved to Waiting for Confirmation (2 mins)`);
+    } else {
+      toast.show(`✓ Copied ${upiId} to clipboard! (Amount: ₹${amount || 0})`);
+    }
     setTimeout(() => setCopiedUpi(''), 2500);
+  };
+
+  const handleRestore = (itemOrItems) => {
+    const items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
+    const idsToRemove = items.map((it) => it._id || it.id || it);
+    setWaitingMap((prev) => {
+      const next = { ...prev };
+      for (const id of idsToRemove) {
+        delete next[id];
+      }
+      saveWaitingMap(next);
+      return next;
+    });
+    toast.show('✓ Restored to Open requests');
   };
 
   const handleOpenForm = () => {
@@ -150,8 +289,6 @@ export default function Redeem() {
     }
   };
 
-
-
   const confirmRemove = async () => {
     const target = confirmDelete;
     setConfirmDelete(null);
@@ -161,10 +298,23 @@ export default function Redeem() {
   const open = (redeems || []).filter((r) => !r.closed);
   const closed = (redeems || []).filter((r) => r.closed);
 
-  // Group open redeems by housemate
-  const groupedOpen = useMemo(() => {
+  const waitingItemIds = useMemo(() => {
+    return new Set(Object.keys(waitingMap));
+  }, [waitingMap]);
+
+  // Split open redeems into regular open vs waiting confirmation
+  const regularOpen = useMemo(() => {
+    return open.filter((r) => !waitingItemIds.has(r._id));
+  }, [open, waitingItemIds]);
+
+  const waitingOpen = useMemo(() => {
+    return open.filter((r) => waitingItemIds.has(r._id));
+  }, [open, waitingItemIds]);
+
+  // Grouping helper
+  const groupRedeemsByPerson = (items) => {
     const map = new Map();
-    for (const r of open) {
+    for (const r of items) {
       const person = r.createdBy?.name || 'Unknown';
       if (!map.has(person)) {
         map.set(person, {
@@ -172,27 +322,39 @@ export default function Redeem() {
           upiId: r.upiId || getUpiFor(person),
           items: [],
           totalAmount: 0,
-          latestDate: r.createdAt
+          latestDate: r.createdAt,
+          expiresAt: waitingMap[r._id]?.expiresAt || 0
         });
       }
       const group = map.get(person);
       group.items.push(r);
       group.totalAmount += Number(r.amount) || 0;
+      if (waitingMap[r._id]?.expiresAt) {
+        group.expiresAt = Math.max(group.expiresAt || 0, waitingMap[r._id].expiresAt);
+      }
       if (new Date(r.createdAt) > new Date(group.latestDate)) {
         group.latestDate = r.createdAt;
         if (r.upiId) group.upiId = r.upiId;
       }
     }
-    // Sort items inside each group: latest first
     for (const group of map.values()) {
       group.items.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     }
-    // Sort groups: highest total sum first
     return Array.from(map.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [open, users]);
+  };
 
-  const openTotalPages = Math.ceil(open.length / pageSize) || 1;
-  const paginatedOpen = open.slice((openPage - 1) * pageSize, openPage * pageSize);
+  // Grouped regular open
+  const groupedOpen = useMemo(() => {
+    return groupRedeemsByPerson(regularOpen);
+  }, [regularOpen, users, waitingMap]);
+
+  // Grouped waiting confirmation
+  const groupedWaiting = useMemo(() => {
+    return groupRedeemsByPerson(waitingOpen);
+  }, [waitingOpen, users, waitingMap]);
+
+  const openTotalPages = Math.ceil(regularOpen.length / pageSize) || 1;
+  const paginatedOpen = regularOpen.slice((openPage - 1) * pageSize, openPage * pageSize);
 
   const groupedTotalPages = Math.ceil(groupedOpen.length / pageSize) || 1;
   const paginatedGroupedOpen = groupedOpen.slice((openPage - 1) * pageSize, openPage * pageSize);
@@ -252,6 +414,21 @@ export default function Redeem() {
             onClick={() => { setActiveTab('open'); setOpenPage(1); }}
           >
             <HandCoins size={14} /> Pending ({open.length})
+            {waitingOpen.length > 0 && (
+              <span
+                style={{
+                  background: 'rgba(245, 158, 11, 0.22)',
+                  color: '#fbbf24',
+                  borderRadius: '10px',
+                  padding: '1px 6px',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  marginLeft: '4px'
+                }}
+              >
+                {waitingOpen.length} waiting
+              </span>
+            )}
           </button>
           <button
             type="button"
@@ -271,7 +448,7 @@ export default function Redeem() {
               onClick={() => { setViewMode('grouped'); setOpenPage(1); }}
               title="Group requests by person"
             >
-              <Layers size={12} /> Combined ({groupedOpen.length})
+              <Layers size={12} /> Combined ({groupedOpen.length + groupedWaiting.length})
             </button>
             <button
               type="button"
@@ -314,11 +491,176 @@ export default function Redeem() {
             >
               <Zap size={14} style={{ color: '#38bdf8', flexShrink: 0 }} />
               <span>
-                <strong>Auto-Settlement Active:</strong> Copy the UPI ID and pay via UPI. When the bank sends the debit SMS matching the amount and member name, SweetHome automatically settles the request and logs the expense!
+                <strong>Auto-Settlement Active:</strong> Click <strong>Copy UPI ID</strong> to move a request to <strong>Waiting for Confirmation</strong>. When the bank sends a debit SMS matching the member name & amount, it auto-settles. If no SMS arrives within 2 mins, it automatically restores to Open. You can also pay directly without copying UPI — matching SMS will settle either way!
               </span>
             </div>
 
-            {viewMode === 'grouped' ? (
+            {/* ─── WAITING FOR CONFIRMATION CATEGORY ─── */}
+            {waitingOpen.length > 0 && (
+              <section className="redeem-waiting-section">
+                <div className="redeem-waiting-header">
+                  <div className="redeem-waiting-title">
+                    <span className="waiting-pulse-dot" />
+                    <Clock size={16} />
+                    <span>Waiting for Confirmation ({waitingOpen.length})</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn btn--restore btn--xs"
+                      onClick={() => handleRestore(waitingOpen)}
+                      title="Restore all waiting requests back to Open"
+                    >
+                      <RotateCcw size={12} /> Restore All
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '11px', color: '#fde68a', opacity: 0.9, marginBottom: '10px' }}>
+                  Awaiting debit SMS for matching amount & name within 2 minutes. Auto-restores to Open on timeout.
+                </div>
+
+                {viewMode === 'grouped' ? (
+                  <div className="redeem-compact-list">
+                    {groupedWaiting.map((group) => (
+                      <div key={`waiting-${group.personName}`} className="redeem-waiting-card">
+                        <div className="redeem-waiting-card__top">
+                          <div className="redeem-compact-card__left">
+                            <div className="redeem-compact-card__avatar" style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}>
+                              {group.personName.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="redeem-compact-card__person-meta">
+                              <div className="redeem-compact-card__name-row">
+                                <span className="redeem-compact-card__name">{group.personName}</span>
+                                <span
+                                  className="redeem-compact-card__upi-pill"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(group.upiId);
+                                    toast.show(`✓ Copied ${group.upiId}`);
+                                  }}
+                                  title="Click to copy UPI ID"
+                                >
+                                  <Copy size={10} /> {group.upiId}
+                                </span>
+                                <span className="redeem-waiting-badge">
+                                  <Clock size={11} /> {formatRemainingTime(group.expiresAt, now)}
+                                </span>
+                                {group.items.length > 1 && (
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      background: 'rgba(245, 158, 11, 0.2)',
+                                      color: '#fbbf24',
+                                      fontSize: '10px',
+                                      padding: '1px 6px',
+                                      fontWeight: 700
+                                    }}
+                                  >
+                                    {group.items.length} items
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="redeem-waiting-card__actions">
+                            <span className="redeem-compact-card__total" style={{ color: '#fbbf24' }}>
+                              {formatCurrency(group.totalAmount)}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn--restore btn--xs"
+                              onClick={() => handleRestore(group.items)}
+                              title="Restore this group back to Open requests"
+                            >
+                              <RotateCcw size={12} /> Restore
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Nested waiting items */}
+                        <div className="redeem-compact-products" style={{ background: 'rgba(0,0,0,0.3)', borderColor: 'rgba(245, 158, 11, 0.15)' }}>
+                          {group.items.map((item, idx) => (
+                            <div key={`wait-it-${item._id}`} className="redeem-compact-item-row" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div className="redeem-compact-item-desc">
+                                  <span style={{ color: 'var(--muted)', marginRight: '6px', fontSize: '11px', fontWeight: 700 }}>
+                                    {idx + 1}.
+                                  </span>
+                                  {item.note || 'Redeem item (no note)'}
+                                </div>
+                                <div className="redeem-compact-item-meta">
+                                  {formatDate(item.createdAt)} • {formatTime(item.createdAt)}
+                                </div>
+                              </div>
+                              <div className="redeem-compact-item-right">
+                                <span className="redeem-compact-item-amt" style={{ color: '#fbbf24' }}>
+                                  {formatCurrency(item.amount)}
+                                </span>
+                                {group.items.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="btn btn--ghost btn--xs"
+                                    onClick={() => handleRestore([item])}
+                                    title="Restore this item back to Open"
+                                    style={{ fontSize: '10.5px' }}
+                                  >
+                                    <RotateCcw size={10} /> Restore
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Flat Waiting list */
+                  <div className="nb-list card" style={{ padding: '4px 12px', background: 'rgba(15, 23, 42, 0.6)', borderColor: 'rgba(245, 158, 11, 0.22)' }}>
+                    {waitingOpen.map((r) => (
+                      <div key={`wait-flat-${r._id}`} className="nb-row" style={{ padding: '10px 0' }}>
+                        <div className="nb-row__icon" style={{ width: '32px', height: '32px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+                          <Clock size={16} />
+                        </div>
+                        <div className="nb-row__body">
+                          <div className="nb-row__text" style={{ fontSize: '13.5px', color: '#fbbf24' }}>
+                            {formatCurrency(r.amount)}
+                            <span className="redeem-waiting-badge" style={{ marginLeft: '6px' }}>
+                              <Clock size={10} /> {formatRemainingTime(waitingMap[r._id]?.expiresAt || 0, now)}
+                            </span>
+                          </div>
+                          <div className="redeem-upi" style={{ fontSize: '11.5px' }}>{r.upiId}</div>
+                          {r.note && <div className="nb-row__desc" style={{ fontSize: '12px' }}>{r.note}</div>}
+                          <div className="nb-row__meta" style={{ fontSize: '10.5px' }}>
+                            Raised by {r.createdBy?.name || '—'} • {formatDate(r.createdAt)} • {formatTime(r.createdAt)}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            className="btn btn--restore btn--xs"
+                            onClick={() => handleRestore([r])}
+                            title="Restore back to Open"
+                          >
+                            <RotateCcw size={12} /> Restore
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* ─── REGULAR OPEN PAYOUTS ─── */}
+            {regularOpen.length === 0 && waitingOpen.length > 0 ? (
+              <div className="card" style={{ padding: '20px', textAlign: 'center', color: 'var(--muted)', fontSize: '12.5px' }}>
+                All pending requests are currently in <strong>Waiting for Confirmation</strong> above.
+                <br />
+                They will automatically return here after 2 minutes if no SMS arrives, or you can click <strong>Restore</strong> anytime.
+              </div>
+            ) : viewMode === 'grouped' ? (
           <>
             <div className="redeem-compact-list">
               {paginatedGroupedOpen.map((group) => (
@@ -365,9 +707,9 @@ export default function Redeem() {
                         <button
                           type="button"
                           className="btn btn--primary btn--xs"
-                          onClick={() => handleCopyUpi(group.upiId, group.totalAmount)}
+                          onClick={() => handleCopyUpi(group.upiId, group.totalAmount, group.items)}
                           style={{ gap: '5px' }}
-                          title={`Copy UPI ID: ${group.upiId}`}
+                          title={`Copy UPI ID: ${group.upiId} & wait confirmation`}
                         >
                           {copiedUpi === group.upiId ? <CheckCircle2 size={12} style={{ color: '#fff' }} /> : <Copy size={12} />}
                           <span>{copiedUpi === group.upiId ? 'Copied!' : 'Copy UPI ID'}</span>
@@ -398,9 +740,9 @@ export default function Redeem() {
                             <button
                               type="button"
                               className="btn btn--ghost btn--xs"
-                              onClick={() => handleCopyUpi(item.upiId || group.upiId, item.amount)}
+                              onClick={() => handleCopyUpi(item.upiId || group.upiId, item.amount, [item])}
                               style={{ gap: '4px' }}
-                              title={`Copy UPI ID: ${item.upiId || group.upiId}`}
+                              title={`Copy UPI ID: ${item.upiId || group.upiId} & wait confirmation`}
                             >
                               {copiedUpi === (item.upiId || group.upiId) ? <CheckCircle2 size={11} style={{ color: '#34d399' }} /> : <Copy size={11} />}
                               <span>{copiedUpi === (item.upiId || group.upiId) ? 'Copied!' : 'Copy UPI'}</span>
@@ -472,9 +814,9 @@ export default function Redeem() {
                     <button
                       type="button"
                       className="btn btn--primary btn--xs"
-                      onClick={() => handleCopyUpi(r.upiId, r.amount)}
+                      onClick={() => handleCopyUpi(r.upiId, r.amount, [r])}
                       style={{ gap: '5px' }}
-                      title={`Copy UPI ID: ${r.upiId}`}
+                      title={`Copy UPI ID: ${r.upiId} & wait confirmation`}
                     >
                       {copiedUpi === r.upiId ? <CheckCircle2 size={11} style={{ color: '#fff' }} /> : <Copy size={11} />}
                       <span>{copiedUpi === r.upiId ? 'Copied!' : 'Copy UPI'}</span>
@@ -484,7 +826,7 @@ export default function Redeem() {
               ))}
             </div>
 
-            {open.length > pageSize && (
+            {regularOpen.length > pageSize && (
               <div className="pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', gap: '8px' }}>
                 <button
                   type="button"
