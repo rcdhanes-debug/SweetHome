@@ -44,17 +44,16 @@ export default function ScheduleEditor({ open, onClose, chores, users, initialDa
     });
   };
 
-  // All currently assigned IDs so we can grey them out in dropdowns
-  const allAssigned = new Set(
-    [...slots.cooking, ...slots.cleaning, ...slots.homeClean].filter(Boolean)
-  );
-
   const errors = [];
   if (slots.cooking.some((x) => !x))   errors.push('Assign 2 people for Cooking.');
   if (slots.cleaning.some((x) => !x))  errors.push('Assign 2 people for Cleaning.');
   if (!slots.homeClean[0])              errors.push('Assign 1 person for Home Clean.');
-  const allIds = [...slots.cooking, ...slots.cleaning, ...slots.homeClean].filter(Boolean);
-  if (new Set(allIds).size !== allIds.length) errors.push('Same person cannot be in two roles.');
+  if (slots.cooking[0] && slots.cooking[0] === slots.cooking[1]) {
+    errors.push('Cooking team cannot have the same person twice.');
+  }
+  if (slots.cleaning[0] && slots.cleaning[0] === slots.cleaning[1]) {
+    errors.push('Cleaning team cannot have the same person twice.');
+  }
 
   const valid = errors.length === 0;
 
@@ -147,15 +146,20 @@ export default function ScheduleEditor({ open, onClose, chores, users, initialDa
                   onChange={(e) => setSlot(key, idx, e.target.value)}
                 >
                   <option value="">— Select person —</option>
-                  {users.map((u) => (
-                    <option
-                      key={u._id}
-                      value={u._id}
-                      disabled={allAssigned.has(String(u._id)) && String(u._id) !== val}
-                    >
-                      {u.name}
-                    </option>
-                  ))}
+                  {users.map((u) => {
+                    const isSameRoleDuplicate =
+                      key !== 'homeClean' &&
+                      slots[key].some((id, i) => i !== idx && String(id) === String(u._id));
+                    return (
+                      <option
+                        key={u._id}
+                        value={u._id}
+                        disabled={isSameRoleDuplicate}
+                      >
+                        {u.name}
+                      </option>
+                    );
+                  })}
                 </select>
               ))}
             </div>

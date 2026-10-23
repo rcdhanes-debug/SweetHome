@@ -1,4 +1,4 @@
-export const HOUSEMATES = ['Veera', 'Harish', 'Gowtham', 'Ashwin', 'Jegan', 'Dhanesh', 'Bhuvanesh', 'Akash', 'Bala'];
+export const HOUSEMATES = ['Veera', 'Harish', 'Gowtham', 'Ashwin', 'Jegan', 'Dhanesh', 'Bhuvi🦁', 'Akash', 'Bala'];
 
 export const DEFAULT_UPI_IDS = {
   Veera: 'veera@okaxis',
@@ -7,7 +7,8 @@ export const DEFAULT_UPI_IDS = {
   Ashwin: 'ashwin@okaxis',
   Jegan: 'jegan@okaxis',
   Dhanesh: 'dhanesh@okaxis',
-  Bhuvanesh: 'bhuvanesh@okaxis',
+  'Bhuvi🦁': 'p.s.bhuvi12@oksbi',
+  Bhuvanesh: 'p.s.bhuvi12@oksbi',
   Akash: 'akash@okaxis',
   Bala: 'bala@okaxis'
 };

@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   Eye,
   EyeOff,
-  MessageSquare
+  MessageSquare,
+  ShoppingBag
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -34,11 +35,20 @@ import ExpenseForm from '../components/ExpenseForm';
 import BottomSheet from '../components/BottomSheet';
 import ConfirmModal from '../components/ConfirmModal';
 import SmsDetailModal from '../components/SmsDetailModal';
+import RedeemDetailModal from '../components/RedeemDetailModal';
 import Confetti from '../components/Confetti';
 import Skeleton from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import CountUp from '../components/CountUp';
 import { formatCurrency, formatDateTime, formatDate, formatTime, monthKey, monthLabel, todayISTDateString } from '../utils/format';
+
+const parseProducts = (note) => {
+  if (!note || typeof note !== 'string') return [];
+  return note
+    .split(/[,;\n]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+};
 
 export default function Expenses() {
   const { history, users, reloadExpenses, reloadFunding } = useApp();
@@ -61,6 +71,9 @@ export default function Expenses() {
 
   // Selected SMS for detail modal view
   const [selectedSmsTxn, setSelectedSmsTxn] = useState(null);
+
+  // Selected Redeem Payout transaction for detail modal view
+  const [selectedRedeemTxn, setSelectedRedeemTxn] = useState(null);
 
   // Manual Expense modal
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -511,6 +524,16 @@ export default function Expenses() {
         <div className="ledger" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {paginatedTransactions.map((t) => {
             const isDebit = t.type === 'DEBIT';
+            const redeemList = Array.isArray(t.redeemItems) && t.redeemItems.length > 0
+              ? t.redeemItems
+              : t.redeemRef && typeof t.redeemRef === 'object'
+              ? [t.redeemRef]
+              : [];
+            const isRedeem = Boolean(t.redeemRef || redeemList.length > 0);
+            const settledProducts = redeemList
+              .flatMap((it) => parseProducts(it.note))
+              .filter(Boolean);
+
             return (
               <div
                 key={t._id}
@@ -569,7 +592,7 @@ export default function Expenses() {
                       {t.reference && t.reference !== 'MANUAL' && (
                         <span>• Ref: {t.reference}</span>
                       )}
-                      {t.redeemRef && (
+                      {isRedeem && (
                         <span
                           style={{
                             fontSize: '9.5px',
@@ -582,6 +605,34 @@ export default function Expenses() {
                         >
                           Redeem Payout
                         </span>
+                      )}
+                      {isRedeem && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedRedeemTxn(t);
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '9.5px',
+                            padding: '2px 8px',
+                            borderRadius: '5px',
+                            fontWeight: 700,
+                            background: 'rgba(168, 85, 247, 0.18)',
+                            color: '#c084fc',
+                            border: '1px solid rgba(168, 85, 247, 0.38)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            touchAction: 'manipulation'
+                          }}
+                          title="Click to view settled products & details"
+                        >
+                          <ShoppingBag size={10} style={{ color: '#c084fc' }} />
+                          <span>Settled Items</span>
+                        </button>
                       )}
                       {t.rawMessage ? (
                         <button
@@ -731,6 +782,13 @@ export default function Expenses() {
         open={Boolean(selectedSmsTxn)}
         transaction={selectedSmsTxn}
         onClose={() => setSelectedSmsTxn(null)}
+      />
+
+      {/* Settled Redeem Details Modal */}
+      <RedeemDetailModal
+        open={Boolean(selectedRedeemTxn)}
+        transaction={selectedRedeemTxn}
+        onClose={() => setSelectedRedeemTxn(null)}
       />
     </div>
   );
