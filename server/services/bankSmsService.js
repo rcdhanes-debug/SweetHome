@@ -537,6 +537,58 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
               };
 
               console.log(`[BankSync] Balance gap detected: Created UNKNOWN EXPENSE of ₹${gap} (Prev: ₹${prevBalance} -> Gap Bal: ₹${gapBalanceAfter} -> Incoming: ₹${newBalance})`);
+            } else if (gap <= -1) {
+              const audit = require('./auditService');
+              const defaultAdmin = (await User.findOne({ role: 'admin' })) || (await User.findOne());
+              const settlerId = defaultAdmin?._id || null;
+
+              const creditGap = Math.abs(gap);
+              const gapDate = new Date(smsDate.getTime() - 1000); // 1 sec before coming transaction
+              const gapBalanceAfter = Math.round((prevBalance + creditGap) * 100) / 100;
+
+              const gapTxnDoc = await BankTransaction.create({
+                bankName: BANK_NAME,
+                accountLast4,
+                type: 'CREDIT',
+                amount: creditGap,
+                balanceAfter: gapBalanceAfter,
+                recipient: 'Sender / Deposit',
+                description: 'UNKNOWN CREDIT',
+                reference: 'BALANCE_GAP',
+                date: gapDate,
+                source: 'SMS',
+                rawMessage: `Auto-reconciled: Detected unrecorded balance surplus of ₹${creditGap} before incoming ${parsed.type} of ₹${parsed.amount}. (Previous balance: ₹${prevBalance}, Expected: ₹${expectedBalance}, Actual: ₹${newBalance}).`,
+                sender: 'SweetHome Reconciler',
+                isDemo: simulated
+              });
+
+              if (settlerId) {
+                await audit.log({
+                  action: 'BANK_TRANSACTION_RECONCILED',
+                  performedBy: settlerId,
+                  details: {
+                    amount: creditGap,
+                    type: 'CREDIT',
+                    description: 'UNKNOWN CREDIT',
+                    reason: 'Auto-reconciled unrecorded balance surplus',
+                    previousBalance: prevBalance,
+                    expectedBalance,
+                    actualBalance: newBalance,
+                    gapTransactionId: gapTxnDoc._id
+                  }
+                });
+              }
+
+              parsed.reconciledGap = {
+                gapAmount: creditGap,
+                gapType: 'CREDIT',
+                previousBalance: prevBalance,
+                expectedBalance,
+                actualBalance: newBalance,
+                gapTransactionId: gapTxnDoc._id
+              };
+
+              console.log(`[BankSync] Balance surplus detected: Created UNKNOWN CREDIT of ₹${creditGap} (Prev: ₹${prevBalance} -> Gap Bal: ₹${gapBalanceAfter} -> Incoming: ₹${newBalance})`);
             }
           }
         } catch (gapErr) {
@@ -559,66 +611,6 @@ async function processBankSms({ sender = '', message = '', timestamp = null, raw
         sender: sender || 'SMS Forwarder',
         isDemo: simulated
       });
-
-      // Auto-match staying member rent collection on bank CREDIT
-      if (parsed.type === 'CREDIT' && parsed.amount > 0) {
-        try {
-          const users = await User.find();
-          const recipientText = String(parsed.recipient || '').toLowerCase();
-          const messageText = String(message || '').toLowerCase();
-
-          // Match member using fuzzy score (handles partial names, UPI handles, aliases)
-          let bestUser = null;
-          let highestScore = 0;
-          for (const u of users) {
-            const score = matchPersonScore(u, recipientText, messageText);
-            if (score >= 60 && score > highestScore) {
-              highestScore = score;
-              bestUser = u;
-            }
-          }
-
-          const matchedUser = bestUser;
-
-          if (matchedUser) {
-            const cycle = await FundingCycle.findOne({ month: monthKey() });
-            if (cycle) {
-              const payment = cycle.payments.find((p) => String(p.user) === String(matchedUser._id));
-              if (payment) {
-                let currentPaid = 0;
-                if (payment.amount > 0) {
-                  currentPaid = payment.amount;
-                } else if (payment.paid) {
-                  currentPaid = cycle.contributionAmount || 6000;
-                }
-
-                const target = cycle.contributionAmount || 6000;
-                const newTotal = currentPaid + parsed.amount;
-                payment.amount = newTotal;
-                payment.paid = newTotal >= target;
-                payment.paidAt = smsDate;
-                payment.recordedBy = matchedUser._id;
-                payment.source = 'SMS';
-
-                cycle.totalCollected = cycle.payments.reduce((s, p) => s + (p.amount || 0), 0);
-                await cycle.save();
-
-                parsed.matchedMember = {
-                  userId: matchedUser._id,
-                  name: matchedUser.name,
-                  amountCredited: parsed.amount,
-                  totalPaid: newTotal,
-                  target,
-                  paid: payment.paid,
-                  due: Math.max(0, target - newTotal)
-                };
-              }
-            }
-          }
-        } catch (matchErr) {
-          console.error('Error auto-crediting funding cycle from SMS:', matchErr);
-        }
-      }
 
       // Auto-match Redeem payout on bank DEBIT (prevents duplicate expense from Website + SMS)
       if (parsed.type === 'DEBIT' && parsed.amount > 0) {

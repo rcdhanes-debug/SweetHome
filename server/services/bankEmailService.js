@@ -271,6 +271,24 @@ async function syncBankBalanceFromEmail() {
                       bankTransactionRef: gapTxn._id
                     });
                   }
+                } else if (gap <= -1) {
+                  const creditGap = Math.abs(gap);
+                  const gapDate = new Date(emailDate.getTime() - 1000);
+                  const gapBalAfter = Math.round((prevBalance + creditGap) * 100) / 100;
+
+                  await BankTransaction.create({
+                    bankName: BANK_NAME,
+                    accountLast4: extracted.accountLast4,
+                    type: 'CREDIT',
+                    amount: creditGap,
+                    balanceAfter: gapBalAfter,
+                    recipient: 'Sender / Deposit',
+                    description: 'UNKNOWN CREDIT',
+                    reference: 'BALANCE_GAP',
+                    date: gapDate,
+                    emailSubject: `Balance surplus of ₹${creditGap} auto-reconciled`,
+                    isDemo: false
+                  });
                 }
               }
             } catch (emailGapErr) {
