@@ -18,7 +18,8 @@ import {
   Copy,
   Sparkles,
   Receipt,
-  MessageSquare
+  MessageSquare,
+  ShoppingBag
 } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useApp } from '../context/AppContext';
@@ -37,6 +38,7 @@ import EmptyState from '../components/EmptyState';
 import BottomSheet from '../components/BottomSheet';
 import ConfirmModal from '../components/ConfirmModal';
 import SmsDetailModal from '../components/SmsDetailModal';
+import RedeemDetailModal from '../components/RedeemDetailModal';
 import PushNotificationBanner from '../components/PushNotificationBanner';
 import { formatCurrency, formatDate, todayDayName, deadlineInfo } from '../utils/format';
 
@@ -60,6 +62,7 @@ export default function Dashboard() {
   const [showBalance, setShowBalance] = useState(true);
   const [loadingTxns, setLoadingTxns] = useState(true);
   const [selectedSmsTxn, setSelectedSmsTxn] = useState(null);
+  const [selectedRedeemTxn, setSelectedRedeemTxn] = useState(null);
 
   const loadBank = async () => {
     try {
@@ -475,7 +478,10 @@ export default function Dashboard() {
                 <EmptyState icon="🧾" title="No transactions yet" subtitle="Sync bank SMS or add an expense to see activity." />
               ) : (
                 <div className="mini-ledger" style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                  {recent.map((t) => (
+                  {recent.map((t) => {
+                    const isRedeem = Boolean(t.redeemRef || (Array.isArray(t.redeemItems) && t.redeemItems.length > 0));
+
+                    return (
                     <div
                       key={t._id}
                       className="mini-ledger__row"
@@ -546,6 +552,47 @@ export default function Dashboard() {
                         </div>
                         <div className="mini-ledger__meta" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span>{formatDate(t.date || t.createdAt)} {t.source ? `• ${t.source}` : ''}{t.recipient && t.recipient !== t.description ? ` • ${t.recipient}` : ''}</span>
+                          {isRedeem && (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                background: 'rgba(168, 85, 247, 0.2)',
+                                color: '#c084fc'
+                              }}
+                            >
+                              Redeem Payout
+                            </span>
+                          )}
+                          {isRedeem && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedRedeemTxn(t);
+                              }}
+                              style={{
+                                background: 'rgba(168, 85, 247, 0.18)',
+                                color: '#c084fc',
+                                border: '1px solid rgba(168, 85, 247, 0.38)',
+                                borderRadius: '4px',
+                                padding: '1px 6px',
+                                fontSize: '9px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                transition: 'all 0.15s ease',
+                                touchAction: 'manipulation'
+                              }}
+                              title="Click to view settled products & details"
+                            >
+                              <ShoppingBag size={9} style={{ color: '#c084fc' }} /> Settled Items
+                            </button>
+                          )}
                           {t.rawMessage && (
                             <button
                               type="button"
@@ -584,7 +631,8 @@ export default function Dashboard() {
                         {t.type === 'CREDIT' ? '+' : '-'} {formatCurrency(t.amount)}
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
               )}
             </div>
@@ -667,6 +715,13 @@ export default function Dashboard() {
         open={Boolean(selectedSmsTxn)}
         transaction={selectedSmsTxn}
         onClose={() => setSelectedSmsTxn(null)}
+      />
+
+      {/* Settled Redeem Details Modal */}
+      <RedeemDetailModal
+        open={Boolean(selectedRedeemTxn)}
+        transaction={selectedRedeemTxn}
+        onClose={() => setSelectedRedeemTxn(null)}
       />
     </div>
   );

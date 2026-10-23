@@ -2008,6 +2008,103 @@ textarea::placeholder {
   width: 100%;
 }
 
+/* Product List Input & Chips in Redeem */
+.product-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.product-input-row .text-input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.product-add-btn {
+  height: 44px;
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md, 10px);
+  flex-shrink: 0;
+}
+
+.product-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.product-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 8px;
+  padding: 5px 8px 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  animation: productChipIn 0.15s ease-out;
+}
+
+@keyframes productChipIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.product-chip__remove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: currentColor;
+  padding: 2px 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.product-chip__remove:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.product-chips-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.product-chip-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  line-height: 1.35;
+}
+
+
 /* ─── Redeem Waiting for Confirmation ─────────────────── */
 .redeem-waiting-section {
   margin-bottom: 18px;

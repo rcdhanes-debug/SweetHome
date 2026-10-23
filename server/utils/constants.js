@@ -1,4 +1,4 @@
-const USER_ORDER = ['Veera', 'Harish', 'Gowtham', 'Ashwin', 'Jegan', 'Dhanesh', 'Bhuvanesh', 'Akash', 'Bala'];
+const USER_ORDER = ['Veera', 'Harish', 'Gowtham', 'Ashwin', 'Jegan', 'Dhanesh', 'Bhuvi🦁', 'Akash', 'Bala'];
 const ADMINS = ['Gowtham', 'Harish'];
 
 const CONTRIBUTION_AMOUNT = 6000;
@@ -16,7 +16,7 @@ const DEFAULT_SCHEDULE = {
     homeClean: 'Jegan'
   },
   Tuesday: {
-    cooking: ['Dhanesh', 'Bhuvanesh'],
+    cooking: ['Dhanesh', 'Bhuvi🦁'],
     cleaning: ['Akash', 'Bala'],
     homeClean: 'Veera'
   },
@@ -26,14 +26,14 @@ const DEFAULT_SCHEDULE = {
     homeClean: 'Dhanesh'
   },
   Thursday: {
-    cooking: ['Bhuvanesh', 'Akash'],
+    cooking: ['Bhuvi🦁', 'Akash'],
     cleaning: ['Bala', 'Veera'],
     homeClean: 'Harish'
   },
   Friday: {
     cooking: ['Gowtham', 'Ashwin'],
     cleaning: ['Jegan', 'Dhanesh'],
-    homeClean: 'Bhuvanesh'
+    homeClean: 'Bhuvi🦁'
   },
   Saturday: {
     cooking: ['Akash', 'Bala'],
@@ -42,7 +42,7 @@ const DEFAULT_SCHEDULE = {
   },
   Sunday: {
     cooking: ['Ashwin', 'Jegan'],
-    cleaning: ['Dhanesh', 'Bhuvanesh'],
+    cleaning: ['Dhanesh', 'Bhuvi🦁'],
     homeClean: 'Akash'
   }
 };
@@ -54,7 +54,8 @@ const DEFAULT_UPI_IDS = {
   Ashwin: 'ashwin@okaxis',
   Jegan: 'jegan@okaxis',
   Dhanesh: 'dhanesh@okaxis',
-  Bhuvanesh: 'bhuvanesh@okaxis',
+  'Bhuvi🦁': 'p.s.bhuvi12@oksbi',
+  Bhuvanesh: 'p.s.bhuvi12@oksbi',
   Akash: 'akash@okaxis',
   Bala: 'bala@okaxis'
 };

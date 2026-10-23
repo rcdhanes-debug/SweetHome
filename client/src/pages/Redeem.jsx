@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   HandCoins,
   Plus,
+  X,
   Send,
   CheckCircle2,
   RotateCcw,
@@ -107,6 +108,28 @@ const copyTextSafe = (text) => {
   return fallbackCopy(text);
 };
 
+const parseProducts = (note) => {
+  if (!note || typeof note !== 'string') return [];
+  return note
+    .split(/[,;\n]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+};
+
+function ProductChips({ note, className = '' }) {
+  const items = parseProducts(note);
+  if (items.length === 0) return null;
+  return (
+    <div className={`product-chips-list ${className}`} style={{ marginTop: '4px' }}>
+      {items.map((item, idx) => (
+        <span key={`${item}-${idx}`} className="product-chip-badge">
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function Redeem() {
   const { redeems = [], users = [], loading, reloadRedeems, reloadExpenses } = useApp();
   const { isAdmin, session, runWithAuth } = useAuth();
@@ -118,7 +141,8 @@ export default function Redeem() {
   const [selectedName, setSelectedName] = useState('');
   const [amountInput, setAmountInput] = useState('');
   const [upiInput, setUpiInput] = useState('');
-  const [noteInput, setNoteInput] = useState('');
+  const [products, setProducts] = useState([]);
+  const [productInput, setProductInput] = useState('');
   const [busy, setBusy] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [copiedUpi, setCopiedUpi] = useState('');
@@ -272,8 +296,25 @@ export default function Redeem() {
   const resetForm = () => {
     setAmountInput('');
     setUpiInput('');
-    setNoteInput('');
+    setProducts([]);
+    setProductInput('');
     setSelectedName('');
+  };
+
+  const handleAddProduct = () => {
+    if (!productInput.trim()) return;
+    const newItems = productInput
+      .split(/[,;\n]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    if (newItems.length > 0) {
+      setProducts((prev) => [...prev, ...newItems]);
+      setProductInput('');
+    }
+  };
+
+  const handleRemoveProduct = (indexToRemove) => {
+    setProducts((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
   const run = async (opts, fn, okMsg) => {
@@ -301,12 +342,21 @@ export default function Redeem() {
       return;
     }
 
+    let finalProducts = [...products];
+    if (productInput.trim()) {
+      const pendingItems = productInput
+        .split(/[,;\n]+/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      finalProducts = [...finalProducts, ...pendingItems];
+    }
+
     setBusy('redeem-add');
     try {
       await redeemApi.createRedeem(session?.token || null, {
         amount,
         upiId,
-        note: noteInput.trim(),
+        note: finalProducts.join(', '),
         userName: selectedName || session?.user?.name
       });
       toast.show('✓ Redeem request posted!');
@@ -617,10 +667,24 @@ export default function Redeem() {
                       <div key={item._id} className="redeem-compact-item-row">
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="redeem-compact-item-desc">
-                            <span style={{ color: 'var(--muted)', marginRight: '6px', fontSize: '11px', fontWeight: 700 }}>
-                              {idx + 1}.
-                            </span>
-                            {item.note || 'Redeem item (no note)'}
+                            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
+                              <span style={{ color: 'var(--muted)', marginRight: '2px', fontSize: '11px', fontWeight: 700 }}>
+                                {idx + 1}.
+                              </span>
+                              {parseProducts(item.note).length > 0 ? (
+                                <div className="product-chips-list">
+                                  {parseProducts(item.note).map((p, pIdx) => (
+                                    <span key={pIdx} className="product-chip-badge">
+                                      {p}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span style={{ color: 'var(--muted)', fontStyle: 'italic', fontSize: '11.5px' }}>
+                                  Redeem item (no note)
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <div className="redeem-compact-item-meta">
                             {formatDate(item.createdAt)} • {formatTime(item.createdAt)}
@@ -705,7 +769,7 @@ export default function Redeem() {
                     >
                       {r.upiId}
                     </div>
-                    {r.note && <div className="nb-row__desc" style={{ fontSize: '12px' }}>{r.note}</div>}
+                    {r.note && <ProductChips note={r.note} />}
                     <div className="nb-row__meta" style={{ fontSize: '10.5px' }}>
                       Raised by {r.createdBy?.name || '—'} • {formatDate(r.createdAt)} • {formatTime(r.createdAt)}
                     </div>
@@ -843,10 +907,24 @@ export default function Redeem() {
                             <div key={`wait-it-${item._id}`} className="redeem-compact-item-row" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div className="redeem-compact-item-desc">
-                                  <span style={{ color: 'var(--muted)', marginRight: '6px', fontSize: '11px', fontWeight: 700 }}>
-                                    {idx + 1}.
-                                  </span>
-                                  {item.note || 'Redeem item (no note)'}
+                                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
+                                    <span style={{ color: 'var(--muted)', marginRight: '2px', fontSize: '11px', fontWeight: 700 }}>
+                                      {idx + 1}.
+                                    </span>
+                                    {parseProducts(item.note).length > 0 ? (
+                                      <div className="product-chips-list">
+                                        {parseProducts(item.note).map((p, pIdx) => (
+                                          <span key={pIdx} className="product-chip-badge">
+                                            {p}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: 'var(--muted)', fontStyle: 'italic', fontSize: '11.5px' }}>
+                                        Redeem item (no note)
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="redeem-compact-item-meta">
                                   {formatDate(item.createdAt)} • {formatTime(item.createdAt)}
@@ -890,7 +968,7 @@ export default function Redeem() {
                             </span>
                           </div>
                           <div className="redeem-upi" style={{ fontSize: '11.5px' }}>{r.upiId}</div>
-                          {r.note && <div className="nb-row__desc" style={{ fontSize: '12px' }}>{r.note}</div>}
+                          {r.note && <ProductChips note={r.note} />}
                           <div className="nb-row__meta" style={{ fontSize: '10.5px' }}>
                             Raised by {r.createdBy?.name || '—'} • {formatDate(r.createdAt)} • {formatTime(r.createdAt)}
                           </div>
@@ -973,7 +1051,7 @@ export default function Redeem() {
                         )}
                       </div>
                       <div className="redeem-upi redeem-upi--muted" style={{ fontSize: '11px' }}>{r.upiId}</div>
-                      {r.note && <div className="nb-row__desc" style={{ fontSize: '12px' }}>{r.note}</div>}
+                      {r.note && <ProductChips note={r.note} />}
                       <div className="nb-row__meta" style={{ fontSize: '10px' }}>
                         {r.createdBy?.name || '—'} • settled by {r.closedByName || r.closedBy?.name || (r.source === 'SMS' ? 'Bank SMS (Auto)' : '—')} on {formatDate(r.closedAt)}
                       </div>
@@ -1073,14 +1151,53 @@ export default function Redeem() {
           />
         </div>
 
-        <label className="field-label">Note (optional)</label>
-        <input
-          className="text-input"
-          placeholder="e.g. Groceries for the week"
-          value={noteInput}
-          maxLength={300}
-          onChange={(e) => setNoteInput(e.target.value)}
-        />
+        <label className="field-label">
+          Products / Items {products.length > 0 && <span className="muted" style={{ fontWeight: 'normal', fontSize: '12px' }}>({products.length} added)</span>}
+        </label>
+        <div className="product-input-row">
+          <input
+            className="text-input"
+            placeholder="Type product name (e.g. Tomato, Carrot)"
+            value={productInput}
+            maxLength={150}
+            onChange={(e) => setProductInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddProduct();
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="btn btn--primary product-add-btn"
+            onClick={handleAddProduct}
+            disabled={!productInput.trim()}
+            title="Add product (or press Enter)"
+            aria-label="Add product"
+          >
+            <Plus size={18} />
+          </button>
+        </div>
+
+        {products.length > 0 && (
+          <div className="product-chips-container">
+            {products.map((prod, idx) => (
+              <span key={`${prod}-${idx}`} className="product-chip">
+                <span>{prod}</span>
+                <button
+                  type="button"
+                  className="product-chip__remove"
+                  onClick={() => handleRemoveProduct(idx)}
+                  title={`Remove ${prod}`}
+                  aria-label={`Remove ${prod}`}
+                >
+                  <X size={13} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="notice notice--muted">
           The request stays open until someone handling the account sends the amount and closes it.

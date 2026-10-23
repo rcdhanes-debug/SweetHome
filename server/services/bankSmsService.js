@@ -242,6 +242,7 @@ const HOUSEMATE_ALIASES = {
   jegan: ['jegan', 'arockia', 'arockiajegan', 'arokia'],
   dhanesh: ['dhanesh', 'dhanes', 'dhaneswar', 'dhaneshwar', 'dhaneswaran', 'dhaneshwaran', '8248441796'],
   dhanes: ['dhanesh', 'dhanes', 'dhaneswar', 'dhaneshwar', 'dhaneswaran', 'dhaneshwaran', '8248441796'],
+  bhuvi: ['bhuvanesh', 'bhuvi', 'psbhuvi', 'bhuvan'],
   bhuvanesh: ['bhuvanesh', 'bhuvi', 'psbhuvi', 'bhuvan'],
   akash: ['akash']
 };
@@ -964,9 +965,46 @@ async function getBankTransactions(limit = 100, month = null) {
     const { start, end } = istMonthRange(month);
     query.date = { $gte: start, $lt: end };
   }
-  return BankTransaction.find(query)
+
+  require('../models/User');
+  const Redeem = require('../models/Redeem');
+
+  const transactions = await BankTransaction.find(query)
+    .populate({
+      path: 'redeemRef',
+      populate: { path: 'createdBy', select: 'name avatar upiId' }
+    })
     .sort({ date: -1 })
-    .limit(limit);
+    .limit(limit)
+    .lean();
+
+  const txnIds = transactions.map((t) => t._id);
+  const allLinkedRedeems = await Redeem.find({ bankTransactionRef: { $in: txnIds } })
+    .populate('createdBy', 'name avatar upiId')
+    .lean();
+
+  const redeemMap = {};
+  for (const r of allLinkedRedeems) {
+    const key = String(r.bankTransactionRef);
+    if (!redeemMap[key]) redeemMap[key] = [];
+    redeemMap[key].push(r);
+  }
+
+  return transactions.map((t) => {
+    const key = String(t._id);
+    const linked = redeemMap[key] || [];
+    if (linked.length > 0) {
+      t.redeemItems = linked;
+      if (!t.redeemRef || typeof t.redeemRef !== 'object') {
+        t.redeemRef = linked[0];
+      }
+    } else if (t.redeemRef && typeof t.redeemRef === 'object') {
+      t.redeemItems = [t.redeemRef];
+    } else {
+      t.redeemItems = [];
+    }
+    return t;
+  });
 }
 
 module.exports = {

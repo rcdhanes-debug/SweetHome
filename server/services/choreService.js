@@ -20,12 +20,14 @@ function validateAssignment({ cooking, cleaning, homeClean }, allUsers) {
   if (!homeClean) throw new AppError('Home Clean must have exactly 1 person.', 400);
   if (String(homeClean).length !== 24) throw new AppError('Home Clean must have exactly 1 person.', 400);
 
-  const assigned = [...cooking, ...cleaning, homeClean].map(String);
-  const unique = new Set(assigned);
-  if (unique.size !== 5) {
-    throw new AppError('A person cannot be assigned to multiple roles on the same day.', 400);
+  if (String(cooking[0]) === String(cooking[1])) {
+    throw new AppError('Cooking team must have 2 different people.', 400);
+  }
+  if (String(cleaning[0]) === String(cleaning[1])) {
+    throw new AppError('Cleaning team must have 2 different people.', 400);
   }
 
+  const assigned = [...cooking, ...cleaning, homeClean].map(String);
   const known = new Set(allUsers.map((u) => String(u._id)));
   for (const id of assigned) {
     if (!known.has(id)) throw new AppError('Schedule references an unknown user.', 400);
