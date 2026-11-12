@@ -1,8 +1,8 @@
-const USER_ORDER = ['Veera', 'Harish', 'Gowtham', 'Ashwin', 'Jegan', 'Dhanesh', 'Bhuvi🦁', 'Akash', 'Bala'];
+const USER_ORDER = ['Veera', 'Harish', 'Gowtham', 'Ashwin', 'Jegan', 'Dhanesh', 'Bhuvi🦁', 'Akash', 'Bala', 'Robert'];
 const ADMINS = ['Gowtham', 'Harish'];
 
 const CONTRIBUTION_AMOUNT = 6000;
-const TARGET_AMOUNT = 54000;
+const TARGET_AMOUNT = CONTRIBUTION_AMOUNT * USER_ORDER.length;
 const PAYMENT_DEADLINE_DAY = 5;
 
 const CATEGORIES = ['Groceries', 'Electricity', 'Cleaning', 'Internet', 'Misc'];
@@ -57,7 +57,8 @@ const DEFAULT_UPI_IDS = {
   'Bhuvi🦁': 'p.s.bhuvi12@oksbi',
   Bhuvanesh: 'p.s.bhuvi12@oksbi',
   Akash: 'akash@okaxis',
-  Bala: 'bala@okaxis'
+  Bala: 'bala@okaxis',
+  Robert: 'robert@okaxis'
 };
 
 function sortUsers(users) {

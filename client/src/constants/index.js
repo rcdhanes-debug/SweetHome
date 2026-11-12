@@ -1,4 +1,4 @@
-export const HOUSEMATES = ['Veera', 'Harish', 'Gowtham', 'Ashwin', 'Jegan', 'Dhanesh', 'Bhuvi🦁', 'Akash', 'Bala'];
+export const HOUSEMATES = ['Veera', 'Harish', 'Gowtham', 'Ashwin', 'Jegan', 'Dhanesh', 'Bhuvi🦁', 'Akash', 'Bala', 'Robert'];
 
 export const DEFAULT_UPI_IDS = {
   Veera: 'veera@okaxis',
@@ -10,13 +10,14 @@ export const DEFAULT_UPI_IDS = {
   'Bhuvi🦁': 'p.s.bhuvi12@oksbi',
   Bhuvanesh: 'p.s.bhuvi12@oksbi',
   Akash: 'akash@okaxis',
-  Bala: 'bala@okaxis'
+  Bala: 'bala@okaxis',
+  Robert: 'robert@okaxis'
 };
 
 export const ADMINS = ['Gowtham', 'Harish'];
 
 export const CONTRIBUTION_AMOUNT = 6000;
-export const TARGET_AMOUNT = 54000;
+export const TARGET_AMOUNT = CONTRIBUTION_AMOUNT * HOUSEMATES.length;
 export const DEADLINE_DAY = 5;
 
 export const CATEGORIES = ['Groceries', 'Electricity', 'Cleaning', 'Internet', 'Misc'];

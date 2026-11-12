@@ -218,12 +218,12 @@ export default function Dashboard() {
                 <div>
                   <div className="dash-card__title">
                     <span>{bankData?.bankName || 'IDFC FIRST Bank'}</span>
+                  </div>
+                  <div className="dash-card__subtitle dash-card__subtitle--row">
+                    <span>A/C •••• {bankData?.accountLast4 || '4202'}</span>
                     <span className="dash-live-badge">
                       <span className="dash-live-dot" /> LIVE
                     </span>
-                  </div>
-                  <div className="dash-card__subtitle">
-                    A/C •••• {bankData?.accountLast4 || '4202'}
                   </div>
                 </div>
               </div>

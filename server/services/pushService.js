@@ -108,7 +108,7 @@ async function sendRemainingBalancePush() {
   const bankAmount = bankDoc ? bankDoc.balance : summary.balance;
   const bankStr = Number(bankAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const body = `Bank Balance: ₹${bankStr} • Collected: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/9 Paid) • Spent: ₹${summary.totalSpent.toLocaleString('en-IN')}`;
+  const body = `Bank Balance: ₹${bankStr} • Collected: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/${summary.payments.length} Paid) • Spent: ₹${summary.totalSpent.toLocaleString('en-IN')}`;
 
   return sendToAll(
     `🏠 Sweet Home Balance — ${summary.monthLabel}`,

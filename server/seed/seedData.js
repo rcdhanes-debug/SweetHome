@@ -69,7 +69,7 @@ async function seedFundingCycle() {
     return cycle;
   }
   cycle = await createCycle(month);
-  console.log(`Seeded funding cycle for ${month} (9 pending payments).`);
+  console.log(`Seeded funding cycle for ${month} (${cycle.payments.length} pending payments).`);
   return cycle;
 }
 

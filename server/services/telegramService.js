@@ -115,14 +115,15 @@ async function sendRemainingMoneyNotification() {
   const bankAmount = bankDoc ? bankDoc.balance : summary.balance;
   const bankDetails = bankDoc?.accountLast4 ? ` <i>(${bankDoc.bankName || 'IDFC FIRST Bank'} • XX${bankDoc.accountLast4})</i>` : '';
 
+  const totalMembers = summary.payments.length || 0;
   const pendingText = summary.partialCount > 0
     ? `⏳ <i>${summary.pendingCount} unpaid, ${summary.partialCount} partial payment(s)</i>`
-    : (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All 9 housemates fully paid!</i>`);
+    : (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All ${totalMembers} housemates fully paid!</i>`);
 
   const text = `💰 <b>Household Financial Health Update</b>\n` +
     `📅 <b>Period</b>: ${summary.monthLabel}\n\n` +
     `🏦 <b>Live Bank Remaining Balance</b>: <b>₹${Number(bankAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>${bankDetails}\n\n` +
-    `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} <i>(${summary.paidCount}/9 Paid)</i>\n` +
+    `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} <i>(${summary.paidCount}/${totalMembers} Paid)</i>\n` +
     `💸 <b>Total Spent</b>: ₹${summary.totalSpent.toLocaleString('en-IN')}\n\n` +
     pendingText;
 
@@ -255,7 +256,7 @@ async function sendContributionPaidNotification({ memberName, amount, monthLabel
       `👤 <b>Housemate</b>: <b>${memberName}</b>\n` +
       `💵 <b>Amount Paid</b>: <b>₹${amountStr}</b>\n` +
       `📅 <b>Month</b>: <b>${monthLabel || 'Current Month'}</b>\n` +
-      `📊 <b>House Status</b>: <b>${paidCount || '?'}/${totalMembers || 9} Paid</b>\n\n` +
+      `📊 <b>House Status</b>: <b>${paidCount || '?'}/${totalMembers || '?'} Paid</b>\n\n` +
       `<i>Thank you for contributing on time! ✨</i>`;
 
     return sendTelegramMessage(text);

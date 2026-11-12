@@ -37,7 +37,7 @@ const path = require('path');
       if (res.status === 200) {
         const u = await fetch('http://127.0.0.1:5099/api/users');
         const body = await u.json();
-        if (body.length === 9) {
+        if (body.length === 10) {
           console.log(`PASS  Boot + auto-seed + health: ${body.length} users seeded`);
           const v = await fetch('http://127.0.0.1:5099/api/auth/verify-pin', {
             method: 'POST',

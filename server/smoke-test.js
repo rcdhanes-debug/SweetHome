@@ -47,12 +47,12 @@ function check(name, cond, extra = '') {
   try {
     // Public read
     let r = await api(port, 'GET', '/api/users');
-    check('GET /api/users -> 9 users', r.status === 200 && r.body.length === 9);
+    check('GET /api/users -> 10 users', r.status === 200 && r.body.length === 10);
 
     r = await api(port, 'GET', '/api/funding/current');
     check(
       'GET /api/funding/current -> correct totals',
-      r.status === 200 && r.body.totalCollected === 0 && r.body.paidCount === 0 && r.body.targetAmount === 54000 && r.body.deadline?.day === 5,
+      r.status === 200 && r.body.totalCollected === 0 && r.body.paidCount === 0 && r.body.targetAmount === 60000 && r.body.deadline?.day === 5,
       `month=${r.body.month}`
     );
 

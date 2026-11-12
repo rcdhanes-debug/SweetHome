@@ -258,7 +258,7 @@ export default function Collection() {
             {funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? 'Monthly Collection Complete' : 'Deadline — 5th of month'}
           </div>
           <div className="deadline-card__text">
-            {funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? '🎉 All 9 housemates have paid!' : deadline.text}
+            {funding.paidCount === funding.payments.length && funding.pendingCount === 0 && funding.partialCount === 0 ? `🎉 All ${funding.payments.length} housemates have paid!` : deadline.text}
           </div>
         </div>
       </section>

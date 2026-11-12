@@ -40,12 +40,13 @@ async function handleCommand(msg, token) {
     const bankAmount = bankDoc ? bankDoc.balance : summary.balance;
     const bankDetails = bankDoc?.accountLast4 ? ` <i>(${bankDoc.bankName || 'IDFC FIRST Bank'} • XX${bankDoc.accountLast4})</i>` : '';
 
+    const totalMembers = summary.payments.length || 0;
     const pendingText = summary.partialCount > 0
       ? `⏳ <i>${summary.pendingCount} unpaid, ${summary.partialCount} partial payment(s)</i>`
-      : (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All 9 housemates paid!</i>`);
+      : (summary.pendingCount > 0 ? `⏳ <i>${summary.pendingCount} housemate(s) pending payment</i>` : `🎉 <i>All ${totalMembers} housemates paid!</i>`);
 
     const reply = `💰 <b>Sweet Home Household Balance</b> (${summary.monthLabel})\n\n` +
-      `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/9 Fully Paid)\n` +
+      `💵 <b>Total Collected</b>: ₹${summary.totalCollected.toLocaleString('en-IN')} (${summary.paidCount}/${totalMembers} Fully Paid)\n` +
       `💸 <b>Total Spent</b>: ₹${summary.totalSpent.toLocaleString('en-IN')}\n\n` +
       `🏦 <b>Bank Remaining Balance</b>: <b>₹${Number(bankAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>${bankDetails}\n\n` +
       pendingText;
@@ -110,7 +111,7 @@ async function handleCommand(msg, token) {
         ? `${pendingItems}\n\n` +
           `💰 <b>Total Pending Collection</b>: <b>₹${totalDue.toLocaleString('en-IN')}</b>\n` +
           `🎯 <b>Target Each</b>: ₹${summary.contributionAmount.toLocaleString('en-IN')}`
-        : `🎉 <b>All 9 housemates have paid for ${summary.monthLabel}! Super proud of everyone!</b> ✨`);
+        : `🎉 <b>All ${summary.payments.length} housemates have paid for ${summary.monthLabel}! Super proud of everyone!</b> ✨`);
     return replyTelegram(token, chatId, reply);
   }
 
