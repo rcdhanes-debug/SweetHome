@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Phone, Mail, Cake, Pencil, Camera, Check, Wallet } from 'lucide-react';
+import { Phone, Mail, Cake, Pencil, Camera, Check, Wallet, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -43,8 +43,11 @@ function paymentFor(funding, memberId) {
 
 function dueLabel(funding, payment) {
   if (!funding) return '—';
-  const amount = payment?.amount || funding.contributionAmount;
-  return payment?.paid ? `✓ Paid ${formatCurrency(amount)}` : `Due ${formatCurrency(amount)}`;
+  if (!payment) return 'Not in cycle';
+  const amount = payment.amount || funding.contributionAmount;
+  if (payment.paid) return `✓ Paid ${formatCurrency(amount)}`;
+  if (payment.status === 'partial') return `Due ${formatCurrency(payment.dueAmount)}`;
+  return `Due ${formatCurrency(funding.contributionAmount)}`;
 }
 
 function myDuties(memberId, chores) {
@@ -53,7 +56,6 @@ function myDuties(memberId, chores) {
     if ((d.cooking || []).some((m) => String(m._id) === String(memberId))) map[d.day] = 'cooking';
     else if ((d.cleaning || []).some((m) => String(m._id) === String(memberId))) map[d.day] = 'cleaning';
     else if (d.homeClean && String(d.homeClean._id) === String(memberId)) map[d.day] = 'homeClean';
-    else if ((d.resting || []).some((m) => String(m._id) === String(memberId))) map[d.day] = 'resting';
   });
   return DAY_ORDER.filter((day) => map[day]).map((day) => ({ day, role: map[day] }));
 }
@@ -63,8 +65,7 @@ export default function Members() {
   const { session, isAdmin, runWithAuth } = useAuth();
   const toast = useToast();
 
-  const [selected, setSelected] = useState(null);
-  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
   const [editAvatar, setEditAvatar] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -74,10 +75,9 @@ export default function Members() {
   const fileRef = useRef(null);
 
   const meId = session?.user?._id;
-  const isSelectedSelf = Boolean(selected && meId && String(selected._id) === String(meId));
 
-  const openMember = (u) => {
-    setSelected(u);
+  const openEdit = (u) => {
+    setEditTarget(u);
     setEditAvatar(u.avatar || '');
     setPhone(u.phone || '');
     setEmail(u.email || '');
@@ -105,34 +105,29 @@ export default function Members() {
   };
 
   const doSaveProfile = async () => {
-    if (!selected) return;
+    if (!editTarget) return;
     setBusy(true);
     try {
       await runWithAuth(
         {
           title: 'Save Profile',
-          subtitle: `Update ${selected.name}'s profile`,
+          subtitle: `Update ${editTarget.name}'s profile`,
           adminOnly: false,
-          defaultName: session?.user?.name
+          defaultName: isAdmin ? session?.user?.name : editTarget.name
         },
         async (token) => {
-          await userApi.updateProfile(token, selected._id, { avatar: editAvatar, phone, email, birthday, upiId });
+          await userApi.updateProfile(token, editTarget._id, { avatar: editAvatar, phone, email, birthday, upiId });
         }
       );
       toast.show('✓ Profile updated');
-      setEditOpen(false);
+      setEditTarget(null);
       await reloadUsers();
-      const refreshed = await userApi.listUsers();
-      openMember(refreshed.find((u) => String(u._id) === String(selected._id)) || selected);
     } catch (err) {
       if (err.message !== 'Cancelled') toast.show(err.message, 'error');
     } finally {
       setBusy(false);
     }
   };
-
-  const selectedPayment = paymentFor(funding, selected?._id);
-  const selectedDuties = myDuties(selected?._id, chores);
 
   return (
     <div className="page">
@@ -146,135 +141,123 @@ export default function Members() {
       </div>
 
       {loading.users ? (
-        <div className="stack">
-          <Skeleton height={120} />
-          <Skeleton height={120} />
+        <div className="member-profile-grid">
+          <Skeleton height={210} />
+          <Skeleton height={210} />
+          <Skeleton height={210} />
         </div>
       ) : users.length === 0 ? (
         <EmptyState icon="👥" title="No members" subtitle="Seed the database to get started." />
       ) : (
-        <div className="member-grid">
+        <div className="member-profile-grid">
           {users.map((u) => {
             const payment = paymentFor(funding, u._id);
+            const duties = myDuties(u._id, chores);
+            const isPaid = Boolean(payment?.paid);
+            const isSelf = Boolean(meId && String(u._id) === String(meId));
+
             return (
-              <button type="button" key={u._id} className="member-card" onClick={() => openMember(u)}>
-                <Avatar user={u} name={u.name} size={56} />
-                <div className="member-card__name">
-                  {u.name}
-                  {u.role === 'admin' && <span className="badge badge--admin">Admin</span>}
-                  {u.away && <span className="badge badge--away">Away</span>}
+              <article key={u._id} className="member-profile-card">
+                <div className="member-profile-card__head">
+                  <div className="member-profile-card__identity">
+                    <Avatar user={u} name={u.name} size={52} />
+                    <div className="member-profile-card__title-wrap">
+                      <div className="member-profile-card__name-row">
+                        <span className="member-profile-card__name">{u.name}</span>
+                        {u.role === 'admin' && (
+                          <span className="badge badge--admin">
+                            <ShieldCheck size={10} /> Admin
+                          </span>
+                        )}
+                        {u.away && <span className="badge badge--away">Away</span>}
+                        {isSelf && <span className="badge badge--today">You</span>}
+                      </div>
+                      <span className="member-profile-card__role">
+                        {u.role === 'admin' ? 'House Admin' : 'Housemate'}
+                        {funding?.month ? ` • ${monthLabel(funding.month)}` : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span className={`member-profile-card__status ${isPaid ? 'is-paid' : payment ? 'is-due' : ''}`}>
+                    {dueLabel(funding, payment)}
+                  </span>
                 </div>
-                <div className={`member-card__due ${payment?.paid ? 'is-paid' : ''}`}>
-                  {dueLabel(funding, payment)}
-                </div>
-                {(u.phone || u.email) && (
-                  <div className="member-card__contact">
-                    {u.phone && <span>{u.phone}</span>}
-                    {u.email && <span>{u.email}</span>}
+
+                {(u.upiId || u.phone || u.email || u.birthday) && (
+                  <div className="member-profile-card__meta">
+                    {u.upiId && (
+                      <span className="chip member-profile-chip" title={u.upiId}>
+                        <Wallet size={12} /> {u.upiId}
+                      </span>
+                    )}
+                    {u.phone && (
+                      <a href={`tel:${u.phone}`} className="chip member-profile-chip">
+                        <Phone size={12} /> {u.phone}
+                      </a>
+                    )}
+                    {u.email && (
+                      <a href={`mailto:${u.email}`} className="chip member-profile-chip" title={u.email}>
+                        <Mail size={12} /> {u.email}
+                      </a>
+                    )}
+                    {u.birthday && (
+                      <span className="chip member-profile-chip">
+                        <Cake size={12} /> {u.birthday}
+                      </span>
+                    )}
                   </div>
                 )}
-              </button>
+
+                <div className="member-profile-card__duties">
+                  <div className="member-profile-card__section-label">This week&apos;s duties</div>
+                  {loading.chores ? (
+                    <Skeleton height={28} />
+                  ) : u.away ? (
+                    <p className="member-profile-card__empty">Away — skipped in chore rotation</p>
+                  ) : duties.length === 0 ? (
+                    <p className="member-profile-card__empty">No active duties assigned</p>
+                  ) : (
+                    <div className="member-duty-pills">
+                      {duties.map(({ day, role }) => {
+                        const meta = DUTY_META[role];
+                        return (
+                          <span
+                            key={day}
+                            className="member-duty-pill"
+                            style={{
+                              color: meta.color,
+                              background: meta.bg,
+                              borderColor: meta.border
+                            }}
+                          >
+                            <strong>{day.slice(0, 3)}</strong> {meta.icon} {meta.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="member-profile-card__foot">
+                  <span className="member-profile-card__contrib">
+                    Monthly share: {funding ? formatCurrency(funding.contributionAmount) : '—'}
+                  </span>
+                  <button type="button" className="btn btn--ghost btn--sm" onClick={() => openEdit(u)}>
+                    <Pencil size={13} /> Edit Profile
+                  </button>
+                </div>
+              </article>
             );
           })}
         </div>
       )}
 
-      <BottomSheet
-        open={Boolean(selected)}
-        onClose={() => setSelected(null)}
-        title={selected?.name || 'Profile'}
-        maxWidth={520}
-      >
-        {selected && (
-          <>
-            <div className="profile-hero">
-              <Avatar user={selected} name={selected.name} size={84} />
-              <div className="profile-hero__info">
-                <div className="profile-hero__name">
-                  {selected.name}
-                  {selected.role === 'admin' && <span className="badge badge--admin">Admin</span>}
-                  {selected.away && <span className="badge badge--away">Away</span>}
-                </div>
-                <div className="profile-hero__meta">
-                  {selected.phone && (
-                    <a href={`tel:${selected.phone}`} className="chip">
-                      <Phone size={13} /> {selected.phone}
-                    </a>
-                  )}
-                  {selected.email && (
-                    <a href={`mailto:${selected.email}`} className="chip">
-                      <Mail size={13} /> {selected.email}
-                    </a>
-                  )}
-                  {selected.birthday && (
-                    <span className="chip">
-                      <Cake size={13} /> {selected.birthday}
-                    </span>
-                  )}
-                  {selected.upiId && (
-                    <span className="chip">
-                      <Wallet size={13} /> {selected.upiId}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="profile-summary">
-              <div className="profile-summary__col">
-                <span className="profile-summary__label">This month</span>
-                <span className={`profile-summary__value ${selectedPayment?.paid ? 'is-paid' : ''}`}>
-                  {selectedPayment?.paid
-                    ? `✓ ${formatCurrency(selectedPayment.amount)} paid`
-                    : `Due ${formatCurrency(selectedPayment?.amount || funding?.contributionAmount || 0)}`}
-                </span>
-                <span className="muted">{monthLabel(funding?.month)}</span>
-              </div>
-              <div className="profile-summary__col">
-                <span className="profile-summary__label">Contribution</span>
-                <span className="profile-summary__value">{funding ? formatCurrency(funding.contributionAmount) : '—'}</span>
-                <span className="muted">per month per person</span>
-              </div>
-            </div>
-
-            <div className="profile-block">
-              <div className="profile-block__head">My chores this week</div>
-              {loading.chores ? (
-                <Skeleton height={60} />
-              ) : selected.away ? (
-                <p className="muted">Away — skipped in the chore rotation.</p>
-              ) : selectedDuties.length === 0 ? (
-                <p className="muted">No duties assigned this week.</p>
-              ) : (
-                <div className="duty-week">
-                  {selectedDuties.map(({ day, role }) => (
-                    <div key={day} className="duty-week__row">
-                      <span className="duty-week__day">{day.slice(0, 3)}</span>
-                      <span className="duty-week__role" style={{ color: DUTY_META[role].color }}>
-                        {DUTY_META[role].icon} {DUTY_META[role].label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {(isSelectedSelf || isAdmin) && (
-              <div className="sheet-actions">
-                <button type="button" className="btn btn--primary btn--block" onClick={() => setEditOpen(true)}>
-                  <Pencil size={15} /> Edit Profile
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </BottomSheet>
-
-      <BottomSheet open={editOpen} onClose={() => setEditOpen(false)} title={`Edit ${selected?.name}`} maxWidth={520}>
-        {selected && (
+      <BottomSheet open={Boolean(editTarget)} onClose={() => setEditTarget(null)} title={`Edit ${editTarget?.name}`} maxWidth={520}>
+        {editTarget && (
           <>
             <div className="edit-avatar">
-              <Avatar user={{ avatar: editAvatar }} name={selected.name} size={72} />
+              <Avatar user={{ avatar: editAvatar }} name={editTarget.name} size={72} />
               <button type="button" className="btn btn--ghost btn--sm" onClick={() => fileRef.current?.click()}>
                 <Camera size={14} /> Change photo
               </button>
@@ -299,7 +282,7 @@ export default function Members() {
             />
             <p className="muted card__hint">The birthday shows automatically on the calendar each year.</p>
             <div className="sheet-actions">
-              <button type="button" className="btn btn--ghost" onClick={() => setEditOpen(false)}>
+              <button type="button" className="btn btn--ghost" onClick={() => setEditTarget(null)}>
                 Cancel
               </button>
               <button type="button" className="btn btn--primary" disabled={busy} onClick={doSaveProfile}>
