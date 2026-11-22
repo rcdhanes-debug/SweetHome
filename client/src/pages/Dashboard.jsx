@@ -390,36 +390,6 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section className="card card--tint floaty floaty--2 dash-expenses dash-card-neat">
-            <div className="dash-card__header">
-              <div className="dash-card__title-lockup">
-                <div className="dash-card__icon-box dash-card__icon-box--amber">
-                  <TrendingUp size={16} />
-                </div>
-                <div>
-                  <div className="dash-card__title">Expenses</div>
-                  <div className="dash-card__subtitle">Spent this month</div>
-                </div>
-              </div>
-              <Link to="/expenses" className="link-btn">
-                Ledger <ChevronRight size={13} />
-              </Link>
-            </div>
-
-            <div className="dash-card__body">
-              <div className="dash-card__balance dash-card__balance--expense">
-                <CountUp value={funding.totalSpent} format={formatCurrency} />
-              </div>
-            </div>
-
-            <div className="dash-card__footer">
-              <span className="muted" style={{ fontSize: '11px' }}>Auto bank tracking</span>
-              <Link to="/expenses" className="link-btn" style={{ fontSize: '12px' }}>
-                View all →
-              </Link>
-            </div>
-          </section>
-
           <section className="card dash-duties dash-card-neat">
             <div className="dash-card__header">
               <div className="dash-card__title-lockup">

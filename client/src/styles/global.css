@@ -310,7 +310,6 @@ a {
     'hero hero'
     'fund fund'
     'contrib contrib'
-    'expenses expenses'
     'duties duties'
     'recent recent';
   gap: 14px;
@@ -687,7 +686,6 @@ a {
       'hero'
       'fund'
       'contrib'
-      'expenses'
       'duties'
       'recent' !important;
     gap: 12px;
@@ -3471,7 +3469,7 @@ textarea::placeholder {
     grid-template-areas:
       'hero fund contrib'
       'duties duties duties'
-      'expenses recent recent';
+      'recent recent recent';
     gap: 14px;
   }
 
