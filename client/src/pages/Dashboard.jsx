@@ -443,10 +443,12 @@ export default function Dashboard() {
               {loading.chores || !today ? (
                 <Skeleton height={110} />
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
-                  <DutyBlock role="cooking" members={today.cooking} />
+                <div className="day-card__body">
+                  <DutyBlock role="morningCooking" members={today.morningCooking} food={today.morningFood} />
+                  {today.nightCooking && today.nightCooking.length > 0 && (
+                    <DutyBlock role="nightCooking" members={today.nightCooking} food={today.nightFood} />
+                  )}
                   <DutyBlock role="cleaning" members={today.cleaning} />
-                  <DutyBlock role="homeClean" members={today.homeClean ? [today.homeClean] : []} />
                 </div>
               )}
             </div>

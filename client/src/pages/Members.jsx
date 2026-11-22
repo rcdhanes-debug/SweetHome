@@ -53,11 +53,19 @@ function dueLabel(funding, payment) {
 function myDuties(memberId, chores) {
   const map = {};
   (chores || []).forEach((d) => {
-    if ((d.cooking || []).some((m) => String(m._id) === String(memberId))) map[d.day] = 'cooking';
-    else if ((d.cleaning || []).some((m) => String(m._id) === String(memberId))) map[d.day] = 'cleaning';
-    else if (d.homeClean && String(d.homeClean._id) === String(memberId)) map[d.day] = 'homeClean';
+    const roles = [];
+    if ((d.morningCooking || []).some((m) => String(m._id) === String(memberId))) roles.push('morningCooking');
+    if ((d.nightCooking || []).some((m) => String(m._id) === String(memberId))) roles.push('nightCooking');
+    if ((d.cleaning || []).some((m) => String(m._id) === String(memberId))) roles.push('cleaning');
+    if (roles.length > 0) map[d.day] = roles;
   });
-  return DAY_ORDER.filter((day) => map[day]).map((day) => ({ day, role: map[day] }));
+  const res = [];
+  DAY_ORDER.forEach((day) => {
+    if (map[day]) {
+      map[day].forEach((r) => res.push({ day, role: r }));
+    }
+  });
+  return res;
 }
 
 export default function Members() {

@@ -1,4 +1,5 @@
 import { DUTY_META } from '../constants';
+import { UtensilsCrossed } from 'lucide-react';
 
 export default function DutyBlock({ role, members, food }) {
   const meta = DUTY_META[role] || DUTY_META.resting;
@@ -10,7 +11,7 @@ export default function DutyBlock({ role, members, food }) {
       style={{
         background: meta.bg || 'var(--surface-2)',
         borderColor: meta.border || 'var(--border)',
-        boxShadow: `0 4px 16px ${meta.glow || 'rgba(0,0,0,0.1)'}`,
+        boxShadow: `0 4px 18px ${meta.glow || 'rgba(0,0,0,0.1)'}`,
         borderRadius: '16px',
         padding: '14px',
         borderWidth: '1px',
@@ -18,23 +19,26 @@ export default function DutyBlock({ role, members, food }) {
         transition: 'transform 0.2s ease, box-shadow 0.2s ease',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        height: '100%',
+        minHeight: '136px',
+        boxSizing: 'border-box'
       }}
     >
       <div>
-        <div className="duty-block__head" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+        <div className="duty-block__head" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
           <span
             className="duty-block__icon"
             style={{
-              fontSize: '18px',
-              width: '32px',
-              height: '32px',
+              fontSize: '16px',
+              width: '30px',
+              height: '30px',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: '10px',
+              borderRadius: '9px',
               background: 'var(--surface-1)',
-              boxShadow: `0 2px 8px ${meta.glow}`
+              boxShadow: `0 2px 6px ${meta.glow}`
             }}
           >
             {meta.icon}
@@ -42,35 +46,51 @@ export default function DutyBlock({ role, members, food }) {
           <span
             className="duty-block__label"
             style={{
-              fontSize: '13px',
+              fontSize: '12px',
               fontWeight: 800,
               color: meta.color,
-              letterSpacing: '0.3px',
-              textTransform: 'uppercase'
+              letterSpacing: '0.4px',
+              textTransform: 'uppercase',
+              lineHeight: 1.2
             }}
           >
             {meta.label}
           </span>
         </div>
-        <div className="duty-block__names" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+
+        <div className="duty-block__names" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))', gap: '8px' }}>
           {list.length ? (
             list.map((m) => (
-              <span
+              <div
                 key={m._id || m.name}
-                className="duty-name"
                 style={{
                   background: 'var(--surface-1)',
                   color: 'var(--text)',
                   border: `1px solid ${meta.border}`,
-                  padding: '5px 12px',
-                  borderRadius: '999px',
+                  padding: '7px 12px',
+                  borderRadius: '10px',
                   fontSize: '13px',
                   fontWeight: 700,
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                  display: 'flex',
+                  alignItems: 'center',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.04)'
                 }}
               >
-                {m.name || m}
-              </span>
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: meta.color,
+                    marginRight: '8px',
+                    opacity: 0.9,
+                    flexShrink: 0
+                  }}
+                />
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {m.name || m}
+                </span>
+              </div>
             ))
           ) : (
             <span
@@ -82,26 +102,32 @@ export default function DutyBlock({ role, members, food }) {
           )}
         </div>
       </div>
-      {food && (
-        <div
-          style={{
-            marginTop: '10px',
-            padding: '6px 10px',
-            background: 'var(--surface-1)',
-            borderRadius: '10px',
-            border: `1px dashed ${meta.border}`,
-            fontSize: '12px',
-            fontWeight: 700,
-            color: meta.color,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <span>🍽️ Menu:</span>
-          <span style={{ color: 'var(--text)' }}>{food}</span>
-        </div>
-      )}
+
+      <div style={{ marginTop: '10px' }}>
+        {food ? (
+          <div
+            style={{
+              padding: '6px 10px',
+              background: 'rgba(255, 255, 255, 0.04)',
+              borderRadius: '9px',
+              border: `1px solid ${meta.border}`,
+              fontSize: '11.5px',
+              fontWeight: 700,
+              color: meta.color,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <UtensilsCrossed size={13} style={{ flexShrink: 0, opacity: 0.9 }} />
+            <span style={{ color: 'var(--text)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {food}
+            </span>
+          </div>
+        ) : (
+          <div style={{ height: '0px' }} />
+        )}
+      </div>
     </div>
   );
 }

@@ -3469,8 +3469,8 @@ textarea::placeholder {
     grid-template-columns: repeat(3, 1fr);
     grid-template-areas:
       'hero fund contrib'
-      'duties duties expenses'
-      'recent recent recent';
+      'duties duties duties'
+      'expenses recent recent';
     gap: 14px;
   }
 
