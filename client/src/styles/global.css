@@ -2923,14 +2923,15 @@ textarea::placeholder {
 
 .day-card__body {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .day-card__body {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 10px;
   }
 }
 
@@ -3525,7 +3526,7 @@ textarea::placeholder {
   }
 
   .day-card__body {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   }
 }
 
