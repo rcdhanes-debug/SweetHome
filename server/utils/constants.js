@@ -43,13 +43,13 @@ const DEFAULT_SCHEDULE = {
     nightFood:      'Chappathi'
   },
   Saturday: {
-    morningCooking: ['Gowtham', 'Robert'],
+    morningCooking: ['Gowtham', 'Bala'],
     nightCooking:   [],
     cleaning:       ['Akash', 'Veera'],
     nightFood:      ''
   },
   Sunday: {
-    morningCooking: ['Robert', 'Jegan'],
+    morningCooking: ['Robert', 'Akash'],
     nightCooking:   [],
     cleaning:       ['Bhuvi🦁', 'Dhanesh'],
     nightFood:      ''
