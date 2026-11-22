@@ -11,23 +11,25 @@ function assertValidIds(ids) {
   }
 }
 
-function validateAssignment({ cooking, cleaning, homeClean }, allUsers) {
-  assertValidIds(cooking);
+function validateAssignment({ morningCooking, nightCooking, cleaning }, allUsers) {
+  assertValidIds(morningCooking);
+  assertValidIds(nightCooking);
   assertValidIds(cleaning);
 
-  if (cooking.length !== 2) throw new AppError('Cooking must have exactly 2 people.', 400);
-  if (cleaning.length !== 2) throw new AppError('Cleaning must have exactly 2 people.', 400);
-  if (!homeClean) throw new AppError('Home Clean must have exactly 1 person.', 400);
-  if (String(homeClean).length !== 24) throw new AppError('Home Clean must have exactly 1 person.', 400);
+  if (morningCooking.length !== 2) throw new AppError('Morning Cooking must have exactly 2 people.', 400);
+  if (cleaning.length !== 2)       throw new AppError('Cleaning must have exactly 2 people.', 400);
+  // nightCooking may be empty on weekends
+  if (nightCooking.length !== 0 && nightCooking.length !== 2)
+    throw new AppError('Night Cooking must have 0 or 2 people.', 400);
 
-  if (String(cooking[0]) === String(cooking[1])) {
-    throw new AppError('Cooking team must have 2 different people.', 400);
-  }
-  if (String(cleaning[0]) === String(cleaning[1])) {
+  if (String(morningCooking[0]) === String(morningCooking[1]))
+    throw new AppError('Morning Cooking team must have 2 different people.', 400);
+  if (String(cleaning[0]) === String(cleaning[1]))
     throw new AppError('Cleaning team must have 2 different people.', 400);
-  }
+  if (nightCooking.length === 2 && String(nightCooking[0]) === String(nightCooking[1]))
+    throw new AppError('Night Cooking team must have 2 different people.', 400);
 
-  const assigned = [...cooking, ...cleaning, homeClean].map(String);
+  const assigned = [...morningCooking, ...nightCooking, ...cleaning].map(String);
   const known = new Set(allUsers.map((u) => String(u._id)));
   for (const id of assigned) {
     if (!known.has(id)) throw new AppError('Schedule references an unknown user.', 400);
@@ -43,15 +45,17 @@ function dayToJSON(dayDoc, allUsers) {
   };
 
   const active = new Set(
-    [...dayDoc.cooking, ...dayDoc.cleaning, dayDoc.homeClean].filter(Boolean).map(String)
+    [...dayDoc.morningCooking, ...dayDoc.nightCooking, ...dayDoc.cleaning].filter(Boolean).map(String)
   );
 
   return {
     _id: dayDoc._id,
     day: dayDoc.day,
-    cooking: dayDoc.cooking.map(userObj).filter(Boolean),
-    cleaning: dayDoc.cleaning.map(userObj).filter(Boolean),
-    homeClean: dayDoc.homeClean ? userObj(dayDoc.homeClean) : null,
+    morningCooking: dayDoc.morningCooking.map(userObj).filter(Boolean),
+    nightCooking:   dayDoc.nightCooking.map(userObj).filter(Boolean),
+    cleaning:       dayDoc.cleaning.map(userObj).filter(Boolean),
+    morningFood:    dayDoc.morningFood || '',
+    nightFood:      dayDoc.nightFood || '',
     resting: allUsers
       .filter((u) => !active.has(String(u._id)))
       .map((u) => ({ _id: u._id, name: u.name })),
@@ -69,9 +73,9 @@ async function buildDefaultDocs() {
     const s = DEFAULT_SCHEDULE[day];
     return {
       day,
-      cooking: s.cooking.map((n) => byName[n]).filter(Boolean),
-      cleaning: s.cleaning.map((n) => byName[n]).filter(Boolean),
-      homeClean: byName[s.homeClean] || null,
+      morningCooking: s.morningCooking.map((n) => byName[n]).filter(Boolean),
+      nightCooking:   (s.nightCooking || []).map((n) => byName[n]).filter(Boolean),
+      cleaning:       s.cleaning.map((n) => byName[n]).filter(Boolean),
       updatedBy: null
     };
   });
@@ -110,22 +114,30 @@ async function getDay(day) {
   return dayToJSON(doc, allUsers);
 }
 
-async function updateDay({ day, cooking, cleaning, homeClean, updatedBy }) {
+async function updateDay({ day, morningCooking, nightCooking, cleaning, morningFood, nightFood, updatedBy }) {
   const allUsers = await User.find();
-  validateAssignment({ cooking, cleaning, homeClean }, allUsers);
+  const mc = Array.isArray(morningCooking) ? morningCooking : [];
+  const nc = Array.isArray(nightCooking) ? nightCooking : [];
+  const cl = Array.isArray(cleaning) ? cleaning : [];
+
+  validateAssignment({ morningCooking: mc, nightCooking: nc, cleaning: cl }, allUsers);
 
   const doc = await ChoreSchedule.findOne({ day });
   if (!doc) throw new AppError('Schedule not found.', 404);
 
   const before = {
-    cooking: doc.cooking.map(String),
-    cleaning: doc.cleaning.map(String),
-    homeClean: doc.homeClean ? String(doc.homeClean) : null
+    morningCooking: (doc.morningCooking || []).map(String),
+    nightCooking: (doc.nightCooking || []).map(String),
+    cleaning: (doc.cleaning || []).map(String),
+    morningFood: doc.morningFood || '',
+    nightFood: doc.nightFood || ''
   };
 
-  doc.cooking = cooking;
-  doc.cleaning = cleaning;
-  doc.homeClean = homeClean;
+  doc.morningCooking = mc;
+  doc.nightCooking = nc;
+  doc.cleaning = cl;
+  if (morningFood !== undefined) doc.morningFood = String(morningFood).trim();
+  if (nightFood !== undefined) doc.nightFood = String(nightFood).trim();
   doc.updatedBy = updatedBy;
   await doc.save();
 
@@ -145,9 +157,9 @@ async function swapUsers({ day, personA, personB, updatedBy }) {
   if (!known.has(aId) || !known.has(bId)) throw new AppError('Person does not exist.', 400);
 
   const roleOf = (id) => {
-    if (doc.cooking.some((x) => String(x) === id)) return 'cooking';
-    if (doc.cleaning.some((x) => String(x) === id)) return 'cleaning';
-    if (doc.homeClean && String(doc.homeClean) === id) return 'homeClean';
+    if ((doc.morningCooking || []).some((x) => String(x) === id)) return 'morningCooking';
+    if ((doc.nightCooking || []).some((x) => String(x) === id)) return 'nightCooking';
+    if ((doc.cleaning || []).some((x) => String(x) === id)) return 'cleaning';
     return 'resting';
   };
 
@@ -160,22 +172,24 @@ async function swapUsers({ day, personA, personB, updatedBy }) {
   };
 
   const drop = (id) => id === aId || id === bId;
-  doc.cooking = doc.cooking.filter((x) => !drop(String(x)));
-  doc.cleaning = doc.cleaning.filter((x) => !drop(String(x)));
-  if (doc.homeClean && drop(String(doc.homeClean))) {
-    doc.homeClean = null;
-  }
+  doc.morningCooking = (doc.morningCooking || []).filter((x) => !drop(String(x)));
+  doc.nightCooking = (doc.nightCooking || []).filter((x) => !drop(String(x)));
+  doc.cleaning = (doc.cleaning || []).filter((x) => !drop(String(x)));
 
   const place = (role, id) => {
-    if (role === 'cooking') doc.cooking.push(id);
+    if (role === 'morningCooking') doc.morningCooking.push(id);
+    else if (role === 'nightCooking') doc.nightCooking.push(id);
     else if (role === 'cleaning') doc.cleaning.push(id);
-    else if (role === 'homeClean') doc.homeClean = id;
   };
 
   place(bRole, aId);
   place(aRole, bId);
 
-  validateAssignment({ cooking: doc.cooking, cleaning: doc.cleaning, homeClean: doc.homeClean }, allUsers);
+  validateAssignment({
+    morningCooking: doc.morningCooking,
+    nightCooking: doc.nightCooking,
+    cleaning: doc.cleaning
+  }, allUsers);
 
   doc.updatedBy = updatedBy;
   await doc.save();

@@ -9,41 +9,50 @@ const CATEGORIES = ['Groceries', 'Electricity', 'Cleaning', 'Internet', 'Misc'];
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 // Default weekly schedule keyed by day with member NAMES (mapped to ObjectIds at seed time).
+// Weekdays: morningCooking (2) + nightCooking (2) + cleaning (2).
+// Weekends: morningCooking (2) only (one cooking team) + cleaning (2). nightCooking is empty.
 const DEFAULT_SCHEDULE = {
   Monday: {
-    cooking: ['Veera', 'Harish'],
-    cleaning: ['Gowtham', 'Ashwin'],
-    homeClean: 'Jegan'
+    morningCooking: ['Gowtham', 'Veera'],
+    nightCooking:   ['Harish', 'Jegan'],
+    cleaning:       ['Harish', 'Jegan'],
+    nightFood:      'Dosa'
   },
   Tuesday: {
-    cooking: ['Dhanesh', 'Bhuvi🦁'],
-    cleaning: ['Akash', 'Bala'],
-    homeClean: 'Veera'
+    morningCooking: ['Ashwin', 'Bala'],
+    nightCooking:   ['Dhanesh', 'Bhuvi🦁'],
+    cleaning:       ['Ashwin', 'Akash'],
+    nightFood:      'Godhumai Dosa'
   },
   Wednesday: {
-    cooking: ['Harish', 'Gowtham'],
-    cleaning: ['Ashwin', 'Jegan'],
-    homeClean: 'Dhanesh'
+    morningCooking: ['Veera', 'Robert'],
+    nightCooking:   ['Jegan', 'Harish'],
+    cleaning:       ['Veera', 'Bala'],
+    nightFood:      'Pongal, Sambar'
   },
   Thursday: {
-    cooking: ['Bhuvi🦁', 'Akash'],
-    cleaning: ['Bala', 'Veera'],
-    homeClean: 'Harish'
+    morningCooking: ['Bala', 'Gowtham'],
+    nightCooking:   ['Bhuvi🦁', 'Dhanesh'],
+    cleaning:       ['Bhuvi🦁', 'Dhanesh'],
+    nightFood:      ''
   },
   Friday: {
-    cooking: ['Gowtham', 'Ashwin'],
-    cleaning: ['Jegan', 'Dhanesh'],
-    homeClean: 'Bhuvi🦁'
+    morningCooking: ['Ashwin', 'Robert'],
+    nightCooking:   ['Harish', 'Jegan'],
+    cleaning:       ['Robert', 'Akash'],
+    nightFood:      'Chappathi'
   },
   Saturday: {
-    cooking: ['Akash', 'Bala'],
-    cleaning: ['Veera', 'Harish'],
-    homeClean: 'Gowtham'
+    morningCooking: ['Gowtham', 'Robert'],
+    nightCooking:   [],
+    cleaning:       ['Akash', 'Veera'],
+    nightFood:      ''
   },
   Sunday: {
-    cooking: ['Ashwin', 'Jegan'],
-    cleaning: ['Dhanesh', 'Bhuvi🦁'],
-    homeClean: 'Akash'
+    morningCooking: ['Robert', 'Jegan'],
+    nightCooking:   [],
+    cleaning:       ['Bhuvi🦁', 'Dhanesh'],
+    nightFood:      ''
   }
 };
 

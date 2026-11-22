@@ -59,15 +59,19 @@ async function handleCommand(msg, token) {
     const dateStr = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeZone: tz }).format(todayDate);
 
     const dayData = await choreService.getDay(weekday);
-    const cooking = dayData?.cooking?.map((u) => u.name).join(' & ') || 'None';
+    const morningCooking = dayData?.morningCooking?.map((u) => u.name).join(' & ') || 'None';
+    const nightCooking = dayData?.nightCooking?.length ? dayData.nightCooking.map((u) => u.name).join(' & ') : '';
     const cleaning = dayData?.cleaning?.map((u) => u.name).join(', ') || 'None';
-    const homeClean = dayData?.homeClean?.name || 'None';
+
+    let cookingText = `🍳 <b>Morning Cooking</b>: <b>${morningCooking}</b>${dayData?.morningFood ? ` <i>(${dayData.morningFood})</i>` : ''}\n`;
+    if (nightCooking) {
+      cookingText += `🌙 <b>Night Cooking</b>: <b>${nightCooking}</b>${dayData?.nightFood ? ` <i>(${dayData.nightFood})</i>` : ''}\n`;
+    }
 
     const reply = `☀️ <b>Today's Duty Schedule</b>\n` +
       `📅 <b>${weekday}, ${dateStr}</b>\n\n` +
-      `🍳 <b>Cooking Team</b>: <b>${cooking}</b>\n` +
-      `🧹 <b>Kitchen & Utensils</b>: <b>${cleaning}</b>\n` +
-      `🏠 <b>Hall & Common Area</b>: <b>${homeClean}</b>\n\n` +
+      cookingText +
+      `🧹 <b>Daily Cleaning</b>: <b>${cleaning}</b>\n\n` +
       `<i>Let's have a wonderful and productive day together! ✨</i>`;
     return replyTelegram(token, chatId, reply);
   }
@@ -78,15 +82,19 @@ async function handleCommand(msg, token) {
     const dateStr = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeZone: tz }).format(tomorrowDate);
 
     const dayData = await choreService.getDay(weekday);
-    const cooking = dayData?.cooking?.map((u) => u.name).join(' & ') || 'None';
+    const morningCooking = dayData?.morningCooking?.map((u) => u.name).join(' & ') || 'None';
+    const nightCooking = dayData?.nightCooking?.length ? dayData.nightCooking.map((u) => u.name).join(' & ') : '';
     const cleaning = dayData?.cleaning?.map((u) => u.name).join(', ') || 'None';
-    const homeClean = dayData?.homeClean?.name || 'None';
+
+    let cookingText = `🍳 <b>Morning Cooking</b>: <b>${morningCooking}</b>${dayData?.morningFood ? ` <i>(${dayData.morningFood})</i>` : ''}\n`;
+    if (nightCooking) {
+      cookingText += `🌙 <b>Night Cooking</b>: <b>${nightCooking}</b>${dayData?.nightFood ? ` <i>(${dayData.nightFood})</i>` : ''}\n`;
+    }
 
     const reply = `🌙 <b>Tomorrow's Duty Schedule</b>\n` +
       `📅 <b>${weekday}, ${dateStr}</b>\n\n` +
-      `🍳 <b>Cooking Team</b>: <b>${cooking}</b>\n` +
-      `🧹 <b>Kitchen & Utensils</b>: <b>${cleaning}</b>\n` +
-      `🏠 <b>Hall & Common Area</b>: <b>${homeClean}</b>\n\n` +
+      cookingText +
+      `🧹 <b>Daily Cleaning</b>: <b>${cleaning}</b>\n\n` +
       `<i>Plan ingredients & prep tonight! Have a restful evening! ✨</i>`;
     return replyTelegram(token, chatId, reply);
   }

@@ -33,29 +33,29 @@ export const CATEGORY_META = {
 export const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export const DUTY_META = {
-  cooking: {
-    label: 'Cooking',
+  morningCooking: {
+    label: 'Morning Cooking',
     icon: '🍳',
     color: '#f59e0b',
     bg: 'rgba(245, 158, 11, 0.12)',
     border: 'rgba(245, 158, 11, 0.35)',
     glow: 'rgba(245, 158, 11, 0.25)'
   },
+  nightCooking: {
+    label: 'Night Cooking',
+    icon: '🌙',
+    color: '#f97316',
+    bg: 'rgba(249, 115, 22, 0.12)',
+    border: 'rgba(249, 115, 22, 0.35)',
+    glow: 'rgba(249, 115, 22, 0.25)'
+  },
   cleaning: {
-    label: 'Cleaning',
+    label: 'Daily Cleaning',
     icon: '🧹',
     color: '#0ea5e9',
     bg: 'rgba(14, 165, 233, 0.12)',
     border: 'rgba(14, 165, 233, 0.35)',
     glow: 'rgba(14, 165, 233, 0.25)'
-  },
-  homeClean: {
-    label: 'Home Clean',
-    icon: '🏠',
-    color: '#a855f7',
-    bg: 'rgba(168, 85, 247, 0.12)',
-    border: 'rgba(168, 85, 247, 0.35)',
-    glow: 'rgba(168, 85, 247, 0.25)'
   },
   resting: {
     label: 'Resting',

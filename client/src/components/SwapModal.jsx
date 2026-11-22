@@ -15,16 +15,19 @@ export default function SwapModal({ open, onClose, chores, onConfirm, loading })
   const daySchedule = chores.find((c) => c.day === day);
   const allMembers = useMemo(() => {
     if (!daySchedule) return [];
-    return [...daySchedule.cooking, ...daySchedule.cleaning, ...(daySchedule.homeClean ? [daySchedule.homeClean] : []), ...daySchedule.resting].filter(
-      (m, i, arr) => arr.findIndex((x) => x._id === m._id) === i
-    );
+    return [
+      ...(daySchedule.morningCooking || []),
+      ...(daySchedule.nightCooking || []),
+      ...(daySchedule.cleaning || []),
+      ...(daySchedule.resting || [])
+    ].filter((m, i, arr) => arr.findIndex((x) => x._id === m._id) === i);
   }, [daySchedule]);
 
   const roleOf = (id) => {
     if (!daySchedule) return 'resting';
-    if (daySchedule.cooking.some((m) => m._id === id)) return 'cooking';
-    if (daySchedule.cleaning.some((m) => m._id === id)) return 'cleaning';
-    if (daySchedule.homeClean && daySchedule.homeClean._id === id) return 'homeClean';
+    if ((daySchedule.morningCooking || []).some((m) => m._id === id)) return 'morningCooking';
+    if ((daySchedule.nightCooking || []).some((m) => m._id === id)) return 'nightCooking';
+    if ((daySchedule.cleaning || []).some((m) => m._id === id)) return 'cleaning';
     return 'resting';
   };
 

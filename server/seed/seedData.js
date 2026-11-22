@@ -88,9 +88,9 @@ async function seedChoreSchedule() {
           // Existing admin-edited schedules are NEVER overwritten on server restart.
           $setOnInsert: {
             day,
-            cooking: s.cooking.map((n) => byName[n]).filter(Boolean),
-            cleaning: s.cleaning.map((n) => byName[n]).filter(Boolean),
-            homeClean: byName[s.homeClean] || null,
+            morningCooking: s.morningCooking.map((n) => byName[n]).filter(Boolean),
+            nightCooking:   (s.nightCooking || []).map((n) => byName[n]).filter(Boolean),
+            cleaning:       s.cleaning.map((n) => byName[n]).filter(Boolean),
             updatedBy: null
           }
         },

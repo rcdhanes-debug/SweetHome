@@ -38,11 +38,11 @@ export default function Chores() {
     }
   };
 
-  const doSaveDay = async ({ day, cooking, cleaning, homeClean }) => {
+  const doSaveDay = async ({ day, morningCooking, nightCooking, cleaning }) => {
     setBusy(true);
     try {
       await runWithAuth({ title: 'Save Schedule', subtitle: 'Admin PIN required', adminOnly: true }, async (token) => {
-        await choreApi.updateDay(token, day, { cooking, cleaning, homeClean });
+        await choreApi.updateDay(token, day, { morningCooking, nightCooking, cleaning });
       });
       toast.show('✓ Schedule updated');
       setEditingDay(null);
@@ -104,10 +104,12 @@ export default function Chores() {
         {loading.chores || !today ? (
           <Skeleton height={140} />
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <DutyBlock role="cooking" members={today.cooking} />
+          <div className="day-card__body" style={{ marginTop: '10px' }}>
+            <DutyBlock role="morningCooking" members={today.morningCooking} food={today.morningFood} />
+            {today.nightCooking && today.nightCooking.length > 0 && (
+              <DutyBlock role="nightCooking" members={today.nightCooking} food={today.nightFood} />
+            )}
             <DutyBlock role="cleaning" members={today.cleaning} />
-            <DutyBlock role="homeClean" members={today.homeClean ? [today.homeClean] : []} />
           </div>
         )}
       </section>

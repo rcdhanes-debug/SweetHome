@@ -15,10 +15,12 @@ export default function ChoreDayCard({ day, canEdit, onEdit, highlight }) {
           </button>
         )}
       </div>
-      <div className="day-card__body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginTop: '10px' }}>
-        <DutyBlock role="cooking" members={day.cooking} />
+      <div className="day-card__body">
+        <DutyBlock role="morningCooking" members={day.morningCooking} food={day.morningFood} />
+        {day.nightCooking && day.nightCooking.length > 0 && (
+          <DutyBlock role="nightCooking" members={day.nightCooking} food={day.nightFood} />
+        )}
         <DutyBlock role="cleaning" members={day.cleaning} />
-        <DutyBlock role="homeClean" members={day.homeClean ? [day.homeClean] : []} />
       </div>
     </div>
   );

@@ -92,15 +92,19 @@ async function sendTomorrowChoresNotification() {
   const dayData = await choreService.getDay(tomorrowWeekday);
   if (!dayData) return false;
 
-  const cooking = dayData.cooking?.map((u) => u.name).join(' & ') || 'None';
+  const morningCooking = dayData.morningCooking?.map((u) => u.name).join(' & ') || 'None';
+  const nightCooking = dayData.nightCooking?.length ? dayData.nightCooking.map((u) => u.name).join(' & ') : '';
   const cleaning = dayData.cleaning?.map((u) => u.name).join(', ') || 'None';
-  const homeClean = dayData.homeClean?.name || 'None';
+
+  let cookingText = `🍳 <b>Morning Cooking</b>: <b>${morningCooking}</b>${dayData.morningFood ? ` <i>(${dayData.morningFood})</i>` : ''}\n`;
+  if (nightCooking) {
+    cookingText += `🌙 <b>Night Cooking</b>: <b>${nightCooking}</b>${dayData.nightFood ? ` <i>(${dayData.nightFood})</i>` : ''}\n`;
+  }
 
   const text = `🌙 <b>Tomorrow's Duty Schedule</b>\n` +
     `📅 <b>${tomorrowWeekday}, ${tomorrowDateStr}</b>\n\n` +
-    `🍳 <b>Cooking Team</b>: <b>${cooking}</b>\n` +
-    `🧹 <b>Kitchen & Utensils</b>: <b>${cleaning}</b>\n` +
-    `🏠 <b>Hall & Common Area</b>: <b>${homeClean}</b>\n\n` +
+    cookingText +
+    `🧹 <b>Daily Cleaning</b>: <b>${cleaning}</b>\n\n` +
     `<i>Great food and a clean home keep our brotherhood strong! ❤️</i>`;
 
   return sendTelegramMessage(text);

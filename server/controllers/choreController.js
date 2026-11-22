@@ -16,12 +16,14 @@ const updateDay = asyncHandler(async (req, res) => {
   const { day } = req.params;
   if (!DAYS.includes(day)) throw new AppError('Invalid day.', 400);
 
-  const { cooking, cleaning, homeClean } = req.body || {};
+  const { morningCooking, nightCooking, cleaning, morningFood, nightFood } = req.body || {};
   const result = await chores.updateDay({
     day,
-    cooking,
+    morningCooking,
+    nightCooking,
     cleaning,
-    homeClean,
+    morningFood,
+    nightFood,
     updatedBy: req.user._id
   });
 
