@@ -13,7 +13,7 @@ export default function DutyBlock({ role, members, food }) {
         borderColor: meta.border || 'var(--border)',
         boxShadow: `0 4px 18px ${meta.glow || 'rgba(0,0,0,0.1)'}`,
         borderRadius: '16px',
-        padding: '14px',
+        padding: '12px 14px',
         borderWidth: '1px',
         borderStyle: 'solid',
         transition: 'transform 0.2s ease, box-shadow 0.2s ease',
@@ -21,7 +21,6 @@ export default function DutyBlock({ role, members, food }) {
         flexDirection: 'column',
         justifyContent: 'space-between',
         height: '100%',
-        minHeight: '136px',
         boxSizing: 'border-box'
       }}
     >
